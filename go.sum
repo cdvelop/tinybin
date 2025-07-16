@@ -1,0 +1,4 @@
+github.com/cdvelop/tinyreflect v0.0.22 h1:SlIXE0F2HBndGWWmvqT1RI39WwGq7L2zIRiNnowSYJY=
+github.com/cdvelop/tinyreflect v0.0.22/go.mod h1:xjhaiKb+AX4jC6QsG1mjl0/wg1laN/qfBBINJh7F3LI=
+github.com/cdvelop/tinystring v0.1.33 h1:da0n79V2mgPQiMwODv+uDD/xrpa7Ve9OLFcezDqzrlo=
+github.com/cdvelop/tinystring v0.1.33/go.mod h1:85ltrACJtjf1Zu/o8kqwHGKAiN0oBwb+TR2tkXdURJo=
