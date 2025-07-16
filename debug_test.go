@@ -1,7 +1,6 @@
 package tinybin
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/cdvelop/tinyreflect"
@@ -17,7 +16,7 @@ func TestDebugRegistration(t *testing.T) {
 	// Check struct ID before registration
 	v := tinyreflect.ValueOf(person)
 	structID := v.Type().StructID()
-	fmt.Printf("Person StructID: %d\n", structID)
+	println("Person StructID:", structID)
 
 	// Register struct
 	err := handler.AddStructs(person)
@@ -26,16 +25,16 @@ func TestDebugRegistration(t *testing.T) {
 	}
 
 	// Check what was registered
-	fmt.Printf("Registered objects count: %d\n", len(handler.stObjects))
+	println("Registered objects count:", len(handler.stObjects))
 	for i, obj := range handler.stObjects {
-		fmt.Printf("Object %d: ID=%d, Fields=%d\n", i, obj.stID, len(obj.stFields))
+		println("Object", i, ": ID=", obj.stID, ", Fields=", len(obj.stFields))
 	}
 
 	// Try to encode and see what happens
 	data, typeID, err := handler.EncodeToBytes(person)
 	if err != nil {
-		fmt.Printf("Encode error: %v\n", err)
+		println("Encode error:", err)
 	} else {
-		fmt.Printf("Encode successful: typeID=%d, data length=%d\n", typeID, len(data))
+		println("Encode successful: typeID=", typeID, ", data length=", len(data))
 	}
 }

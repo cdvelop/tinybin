@@ -2,7 +2,6 @@ package tinybin
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
 
 	"github.com/cdvelop/tinyreflect"
@@ -80,7 +79,7 @@ func (h *TinyBin) analyzeDataType(v tinyreflect.Value) (*tinyreflect.Type, uint3
 		// Get slice length using tinyreflect
 		length, err := v.Len()
 		if err != nil {
-			return nil, 0, fmt.Errorf("getting slice length: %w", err)
+			return nil, 0, Errf("getting slice length: %w", err)
 		}
 
 		if length == 0 {
@@ -90,7 +89,7 @@ func (h *TinyBin) analyzeDataType(v tinyreflect.Value) (*tinyreflect.Type, uint3
 		// Get the first element to determine the element type
 		firstElem, err := v.Index(0)
 		if err != nil {
-			return nil, 0, fmt.Errorf("getting first slice element: %w", err)
+			return nil, 0, Errf("getting first slice element: %w", err)
 		}
 
 		elemType := firstElem.Type()
@@ -125,19 +124,19 @@ func (h *TinyBin) encodeSlice(v tinyreflect.Value) ([]byte, error) {
 	// Get slice length using the new Len() method
 	length, err := v.Len()
 	if err != nil {
-		return nil, fmt.Errorf("getting slice length: %w", err)
+		return nil, Errf("getting slice length: %w", err)
 	}
 
 	// Encode each element using the new Index() method
 	for i := 0; i < length; i++ {
 		elem, err := v.Index(i)
 		if err != nil {
-			return nil, fmt.Errorf("getting slice element %d: %w", i, err)
+			return nil, Errf("getting slice element %d: %w", i, err)
 		}
 
 		elemBytes, err := h.encodeValue(elem)
 		if err != nil {
-			return nil, fmt.Errorf("encoding slice element %d: %w", i, err)
+			return nil, Errf("encoding slice element %d: %w", i, err)
 		}
 		buf = append(buf, elemBytes...)
 	}
@@ -250,7 +249,7 @@ func (h *TinyBin) encodeField(v tinyreflect.Value) ([]byte, error) {
 		} else if t.Kind() == K.Slice {
 			return h.encodeSlice(v)
 		} else {
-			return nil, fmt.Errorf("unsupported type: %T", val)
+			return nil, Errf("unsupported type: %T", val)
 		}
 	}
 
