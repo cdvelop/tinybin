@@ -17,12 +17,18 @@ TinyBin is a binary data transfer protocol designed specifically for Go applicat
 - **TinyGo compatible**: No maps, minimal heap allocations
 - **Strict validation**: Exact struct matching required
 
+### Controlled Nesting & Recursion
+- **Cycle Detection**: The protocol automatically detects and rejects cyclical dependencies during type registration (e.g., `type User struct { Friends []User }`). This prevents infinite loops and ensures program stability.
+- **Depth Limit**: To prevent stack overflow errors in deeply nested structures, `tinybin` imposes a fixed depth limit (e.g., 8 levels) during the recursive analysis of structs. This is more than enough for typical API designs while providing a critical safety guarantee.
+
 ## Supported Data Types
 
 - **Numeric**: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`, `float32`, `float64`
 - **Boolean**: `bool`
 - **Text**: `string` (UTF-8 encoded)
 - **Binary**: `[]byte`
+- **Slices**: Slices of any supported primitive type (`[]string`, `[]int32`, etc.) and slices of registered structs (`[]MyStruct`) are supported.
+- **Structs**: Nested structs are supported, subject to the depth limit.
 
 ## Wire Format
 
@@ -31,27 +37,20 @@ TinyBin is a binary data transfer protocol designed specifically for Go applicat
 [Protocol Header][Data Payload]
 ```
 
-### Protocol Header (9 bytes)
+### Protocol Header (5 bytes + varint)
 ```
 [1 byte: Major Version]
 [1 byte: Minor Version]  
-[6 bytes: Struct Identifier]
+[2 bytes: Struct ID (Type ID)]
 [varint: Struct Count]
 ```
 
-### Struct Identifier (6 bytes)
-```
-[3 bytes: Package Name][3 bytes: Struct Name]
-```
+### Struct Identifier (2 bytes)
+El identificador de struct (o ID de Tipo) es un `uint16` que representa el tipo de struct principal que se está transfiriendo.
 
-**Examples:**
-- Package `home`, Struct `login` → `[hom][log]`
-- Package `api`, Struct `user` → `[api][use]`
-
-**Requirements:**
-- Package name must be ≥ 3 characters
-- Struct name must be ≥ 3 characters
-- Names shorter than 3 characters are rejected
+**Asignación de ID:**
+- El ID de un struct corresponde a su índice en el slice de caché global `stObjects` después del registro.
+- **Requisito Crítico**: El orden de registro con `h.AddStructs()` debe ser **idéntico** en el cliente (WASM) y el servidor. La falta de sincronización en el orden resultará en errores de decodificación.
 
 ### Data Payload
 ```
@@ -80,6 +79,9 @@ Each struct contains fields in declaration order:
 | `bool` | 1 byte (`0x00` = false, `0x01` = true) |
 | `string` | `[varint length][UTF-8 bytes]` |
 | `[]byte` | `[varint length][raw bytes]` |
+| `slice`  | `[varint element_count][element_0]...[element_N]` |
+
+**Note on Slices:** The encoding of elements within a slice relies on the cached schema. The protocol knows whether to expect a primitive type or a struct type and applies the correct deserialization logic without needing extra type markers in the payload. `nil` and empty slices are both encoded as a slice with `0` elements.
 
 ### Variable Integer Encoding (LEB128)
 
@@ -95,48 +97,76 @@ Uses Little Endian Base 128 (LEB128) encoding for:
 
 ## API Design
 
-### Core Types
+### Handler & Core Types
+The protocol is managed through a `TinyBin` handler that encapsulates the configuration and the cached struct schemas. This design avoids global state and ensures that different handlers can coexist with different configurations.
 
 ```go
+// TinyBin is the main handler for encoding and decoding operations.
+type TinyBin struct {
+    stObjects []stObject // Internal cache of registered struct schemas
+    maxDepth  int        // Maximum nesting depth for struct analysis
+}
+
+// stObject holds the cached metadata for a single struct type.
 type stObject struct {
-    stName   string      // "package.struct" format
-    stFields []stField   // field metadata
-    offsets  []uintptr   // precalculated field offsets
+    stID     uint16      // Unique ID (index in the stObjects slice)
+    stName   string      // Struct name for debugging purposes
+    stFields []stField   // Ordered list of field metadata
 }
 
+// stField holds the metadata for a single struct field.
 type stField struct {
-    name     string      // field name
-    typeKind reflect.Kind // field type
-    offset   uintptr     // field offset in struct
+    name     string          // Field name
+    typeKind tinystring.Kind // The kind of the field (int, string, slice, etc.) from tinyreflect
+    // Additional fields for offsets, nested type IDs, etc.
 }
-
-var stObjects = []stObject{} // global cache
 ```
 
 ### Primary API
+The API is designed to be clear and robust, providing methods for configuration, registration, and data conversion.
 
 ```go
-// Create new TinyBin handler
-h := tinybin.New()
+// Option defines a function that configures a TinyBin handler.
+type Option func(*TinyBin)
 
-// Register struct types (must be done on both ends)
-err := h.AddStructsObject(stObjects ...any)
+// WithMaxDepth returns an Option to set the max nesting depth.
+func WithMaxDepth(depth int) Option {
+    // ...
+}
 
-// Encode slice of structs to writer
-err := h.Encode(w io.Writer, structs ...any)
+// New creates a new TinyBin handler with optional configurations.
+// Default maxDepth is 8.
+h := tinybin.New(tinybin.WithMaxDepth(10))
 
-// Decode from reader to slice of structs  
-structs, err := h.Decode(r io.Reader)
+// Register struct types. The order of registration is critical
+// and must be identical on both client and server.
+err := h.AddStructs(User{}, Address{}, Product{})
+
+// Encode a slice of structs to an io.Writer.
+err := h.Encode(w, []User{...})
+
+// Decode from an io.Reader into a new slice of structs.
+// The result must be type-asserted.
+decoded, err := h.Decode(r)
+users := decoded.([]User)
+
+// Encode a slice of structs directly to a byte slice.
+bytes, typeID, err := h.EncodeToBytes([]Product{...})
+
+// Decode from a byte slice into a provided slice pointer.
+var products []Product
+err := h.DecodeFromBytes(bytes, typeID, &products)
 ```
 
 ## File Structure
 
 ```
 tinybin/
-├── tinybin.go        // Main API, New(), AddStructsObject()
-├── encoder.go        // Encode() and serialization functions
-├── decoder.go        // Decode() and deserialization functions  
-├── reflect.go        // tinyreflect, caching, struct analysis
+├── tinybin.go        // Main API: New(), Option, TinyBin struct
+├── options.go        // Configuration functions (e.g., WithMaxDepth)
+├── register.go       // AddStructs() and the recursive analysis logic
+├── encoder.go        // Encode(), EncodeToBytes()
+├── decoder.go        // Decode(), DecodeFromBytes()
 ├── types.go          // stObject, stField type definitions
 ├── errors.go         // Protocol-specific error types
 ├── varint.go         // LEB128 implementation
@@ -148,7 +178,8 @@ tinybin/
 ### Error Types
 
 - **Version Mismatch**: Major version differences
-- **Type Mismatch**: Struct identifier doesn't match registered types
+- **Type Mismatch**: El ID de struct recibido no coincide con ningún tipo registrado.
+- **Dependency Not Registered**: Un struct anidado o un struct dentro de un slice depende de un tipo que no fue registrado. El protocolo falla inmediatamente para garantizar que solo se procesen datos de tipos conocidos y validados.
 - **Field Count Mismatch**: Different number of fields in struct
 - **Field Type Mismatch**: Field type differs at specific index
 - **Unsupported Type**: Non-primitive type encountered
@@ -160,6 +191,10 @@ tinybin/
 - **Fail Fast**: First error aborts entire operation
 - **Detailed Messages**: Include field names, indices, and expected vs actual types
 - **Strict Validation**: Exact struct matching required between encoder and decoder
+
+### Controlled Nesting & Recursion
+- **Cycle Detection**: The protocol automatically detects and rejects cyclical dependencies during type registration (e.g., `type User struct { Friends []User }`). This prevents infinite loops and ensures program stability.
+- **Depth Limit**: To prevent stack overflow errors in deeply nested structures, `tinybin` imposes a fixed depth limit (e.g., 8 levels) during the recursive analysis of structs. This is more than enough for typical API designs while providing a critical safety guarantee.
 
 ## Version Compatibility
 
@@ -185,53 +220,81 @@ tinybin/
 - **Streaming Interface**: Memory-efficient for large datasets
 - **TinyGo Compatible**: No unsupported reflection features
 
-## Usage Examples
+## Typical Usage Pattern
 
-### Basic Usage
+The following example demonstrates a more realistic usage pattern in a typical application, where `tinybin` is initialized once and shared.
+
+### 1. Centralized Registration (`registry/registry.go`)
+First, create a central package to define your data structures and initialize the `tinybin` handler. This ensures all parts of your application (server and client) use the exact same configuration.
 
 ```go
-package main
+package registry
 
-import "tinybin"
+import "github.com/cdvelop/tinybin"
 
+// Define structs used across the application.
 type User struct {
-    ID   int64  `html:"id"`
-    Name string `html:"name"`
-    Age  int32  `html:"age"`
+    ID   uint64
+    Name string
 }
 
-func main() {
-    // Initialize
-    h := tinybin.New()
-    err := h.AddStructsObject(User{})
+type Product struct {
+    SKU   string
+    Price float64
+}
+
+// H is the global, pre-configured TinyBin handler for the entire application.
+var H *tinybin.TinyBin
+
+func init() {
+    // Initialize the handler once when the package is first used.
+    H = tinybin.New()
+
+    // Register all application structs in a specific, consistent order.
+    // This order MUST be the same for the server and the WASM client.
+    err := H.AddStructs(User{}, Product{})
     if err != nil {
-        panic(err)
+        // A failure here is critical and should stop the application.
+        panic("fatal error: failed to register structs with tinybin: " + err.Error())
     }
-    
-    // Encode
-    users := []User{
-        {ID: 1, Name: "Alice", Age: 30},
-        {ID: 2, Name: "Bob", Age: 25},
+}
+```
+
+### 2. Usage in Application Code (`server/handlers.go`)
+Now, other packages can import the `registry` and use the pre-configured handler to encode or decode data without needing to know the implementation details.
+
+```go
+package server
+
+import (
+    "bytes"
+    "net/http"
+    . "github.com/cdvelop/tinystring" // Import tinystring for string/error handling
+    "my-app/registry" // Import the central registry
+)
+
+// apiHandler uses the shared tinybin handler to send binary data.
+func apiHandler(w http.ResponseWriter, r *http.Request) {
+    users := []registry.User{
+        {ID: 1, Name: "Alice"},
+        {ID: 2, Name: "Bob"},
     }
-    
-    var buf bytes.Buffer
-    err = h.Encode(&buf, users)
+
+    // Use the pre-configured handler from the registry package.
+    encodedBytes, _, err := registry.H.EncodeToBytes(users)
     if err != nil {
-        panic(err)
+        http.Error(w,T(D.Encoding,D.Failed), http.StatusInternalServerError)
+        return
     }
-    
-    // Decode
-    decoded, err := h.Decode(&buf)
-    if err != nil {
-        panic(err)
-    }
-    
-    users2 := decoded.([]User)
-    fmt.Printf("Decoded: %+v\n", users2)
+
+    w.Header().Set("Content-Type", "application/octet-stream")
+    w.Write(encodedBytes)
+    println("Sent encoded user data.")
 }
 ```
 
 ### WebAssembly Integration
+The WASM client would also import the `registry` package. Since the `init()` function is executed automatically, the `registry.H` handler will be available and configured identically to the server, ensuring perfect compatibility.
 
 ```go
 //go:build wasm
@@ -241,49 +304,30 @@ package main
 
 import (
     "syscall/js"
-    "tinybin"
+    "my-app/registry" // Import the same registry
 )
 
-var handler *tinybin.TinyBin
+var h = registry.H // Use the shared, pre-configured handler
 
-func init() {
-    handler = tinybin.New()
-    handler.AddStructsObject(ApiRequest{}, ApiResponse{})
-}
-
-func encodeData(this js.Value, args []js.Value) interface{} {
-    // Receive data from JavaScript
-    // Encode with TinyBin
-    // Return binary data to JavaScript
-}
-
-func decodeData(this js.Value, args []js.Value) interface{} {
-    // Receive binary data from JavaScript  
-    // Decode with TinyBin
-    // Return structured data to JavaScript
-}
-
-func main() {
-    js.Global().Set("encodeData", js.FuncOf(encodeData))
-    js.Global().Set("decodeData", js.FuncOf(decodeData))
-    select {} // Keep alive
-}
+// ... rest of the WASM integration code ...
 ```
 
 ## Limitations
 
-1. **No Maps**: Maps are not supported due to TinyGo compatibility
-2. **No Interfaces**: Only concrete struct types supported
-3. **No Pointers**: Direct pointer encoding not supported
-4. **No Nested Structs**: Only flat struct hierarchies
-5. **Field Order Dependency**: Adding/removing/reordering fields breaks compatibility
-6. **Name Length Requirement**: Package and struct names must be ≥ 3 characters
+1. **No Maps**: Maps are not supported due to TinyGo compatibility.
+2. **No Interfaces**: Only concrete struct types are supported.
+3. **No Pointers**: Direct pointer encoding is not supported.
+4. **Nesting Constraints**:
+    - **Depth Limit**: Struct nesting is limited to a fixed depth to ensure stability.
+    - **No Cycles**: Recursive struct definitions that create cycles are forbidden and will cause an error.
+5. **Field Order Dependency**: Adding, removing, or reordering fields in a struct is a breaking change.
+6. **Manual Registration Order**: The developer is responsible for ensuring that the order of struct registration with `h.AddStructs()` is identical on both the encoding and decoding ends.
 
 ## Development Environment
 
-- **Platform**: Windows 10 with GitBash
+- **Platform**: Debian 12 (Bookworm)
 - **Go Version**: Compatible with standard Go and TinyGo
-- **Dependencies**: Standard library only
+- **Dependencies**: `github.com/cdvelop/tinyreflect`, `github.com/cdvelop/tinystring`
 - **Testing**: Unit tests for all encoding/decoding scenarios
 
 ## Security Considerations
@@ -303,433 +347,6 @@ func main() {
 ---
 
 **TinyBin Protocol v1.0** - Optimized for Go fullstack applications with WebAssembly support.
-
-# USER
-
-seria muy complejo que soportaramos strcuturas anidadas por ej ?
-
-type User struct{
-  Name string
-  Addresses []Address
-}
-
-type Address struct{
-Streeth string
-Number uint16
-}
-
-no deseo que crees nada solo dame un analisi tecnico pro y contras con alternativas para tomar una decision, esto inmediatamnete hace persar que tambien deberia poder manejar todos los slices [] de number/string/struct y que nivel de anidamiento es recomendsble soportar? por favor ayudame a resolver estas interrogantes basado en el protocolo que estamos creando
-
-# RESPONSE
-
-## Análisis Técnico: Soporte de Estructuras Anidadas
-
-### **Complejidad Técnica**
-
-**PROS:**
-- **Expresividad**: Modelos de datos más ricos y realistas
-- **Reutilización**: `Address` se puede usar en múltiples structs
-- **Semántica clara**: Relaciones de datos más naturales
-- **Escalabilidad**: Permite diseños de API más sofisticados
-
-**CONTRAS:**
-- **Complejidad de implementación**: 
-  - Recursión en encoding/decoding
-  - Análisis de dependencias entre tipos
-  - Gestión de referencias circulares potenciales
-- **Cache management**: 
-  - Necesitas cachear múltiples tipos relacionados
-  - Validación de que todos los tipos necesarios estén registrados
-- **Wire format más complejo**:
-  - Necesitas identificadores para cada tipo anidado
-  - Metadata adicional por cada nivel de anidamiento
-- **TinyGo constraints**: 
-  - Reflexión más compleja puede no ser soportada
-  - Mayor uso de memoria para análisis recursivo
-
----
-
-## **Alternativas de Implementación**
-
-### **Alternativa A: Sin soporte (actual)**
-```go
-// SOLO esto funciona
-type User struct {
-    Name string
-    Street string  // campos planos
-    Number uint16
-}
-```
-**Pros**: Simple, rápido, compatible con TinyGo
-**Contras**: Modelos de datos limitados, duplicación
-
-### **Alternativa B: Soporte limitado - 1 nivel**
-```go
-type User struct {
-    Name string
-    Address Address  // SOLO structs directos, NO slices
-}
-
-type Address struct {
-    Street string
-    Number uint16
-}
-```
-**Wire format**: `[User fields][Address fields]` (aplanado)
-**Complejidad**: Media, manejable
-
-### **Alternativa C: Soporte completo con slices**
-```go
-type User struct {
-    Name string
-    Addresses []Address  // slices de structs
-    Tags []string       // slices de primitivos
-    Scores []int32      // todos los slice types
-}
-```
-**Wire format**: Necesita length prefixes para cada slice
-**Complejidad**: Alta
-
-### **Alternativa D: Referencias por ID**
-```go
-type User struct {
-    Name string
-    AddressIDs []int64  // referencias, no objetos anidados
-}
-// Addresses se transfieren por separado
-```
-**Pros**: Evita anidamiento, control de relaciones
-**Contras**: Lógica de resolución en aplicación
-
----
-
-## **Nivel de Anidamiento Recomendado**
-
-### **Para tu contexto (WebAssembly + TinyGo):**
-
-**Nivel 0 (Actual)**: Solo primitivos
-- ✅ Máxima compatibilidad TinyGo
-- ✅ Performance óptima
-- ❌ Expresividad limitada
-
-**Nivel 1**: Structs anidados (sin slices)
-- ✅ 80% de casos de uso cubiertos
-- ✅ Complejidad manejable
-- ✅ Compatible con TinyGo
-- ❌ No permite listas relacionadas
-
-**Nivel 2**: Slices de primitivos + structs anidados
-```go
-type User struct {
-    Name string
-    Tags []string      // slices de primitivos ✅
-    Address Address    // struct anidado ✅
-    Scores []int32     // más slices primitivos ✅
-}
-```
-- ✅ Cubre 95% de casos de uso
-- ⚠️ Complejidad media-alta
-- ⚠️ Posibles issues con TinyGo
-
-**Nivel 3**: Slices de structs anidados
-```go
-Addresses []Address  // slices de structs
-```
-- ✅ Máxima expresividad
-- ❌ Complejidad muy alta
-- ❌ Probable incompatibilidad TinyGo
-- ❌ Gestión de memoria compleja en WASM
-
----
-
-## **Impacto en Wire Format**
-
-### **Actual (Nivel 0)**:
-```
-[version][struct_id][count][flat_fields...]
-```
-
-### **Nivel 1** (structs anidados):
-```
-[version][main_struct_id][nested_struct_ids...][count][fields_with_nested...]
-```
-
-### **Nivel 2+** (con slices):
-```
-[version][type_registry][count][complex_nested_data...]
-```
-
----
-
-## **Recomendación Específica**
-
-**Para tu protocolo TinyBin, recomiendo NIVEL 1:**
-
-```go
-type User struct {
-    Name string
-    Address Address     // ✅ struct anidado
-    ContactInfo Contact // ✅ múltiples structs anidados
-    
-    // NO soportar:
-    // Addresses []Address  ❌ slice de structs
-    // Tags []string        ❌ slices de primitivos por ahora
-}
-```
-
-**Justificación:**
-1. **Cubre el 80% de casos de uso** reales en APIs
-2. **Mantiene compatibilidad TinyGo** (reflexión simple)
-3. **Wire format manejable** (solo necesitas aplanar campos)
-4. **Performance predecible** en WebAssembly
-5. **Evolución gradual**: Puedes añadir slices en v2.0
-
-**Implementación sugerida:**
-- Analizar structs anidados recursivamente al registrar
-- Aplanar todos los campos en el wire format
-- Mantener metadata de "dónde empieza cada struct anidado"
-- Un solo `struct_id` compuesto que incluya todas las dependencias
-
-¿Te parece razonable empezar con Nivel 1 y evaluar Nivel 2 en una versión futura del protocolo?
-
-# USER
-
-nivel 3  slice de struct anidado un solo nivel , primitivos string/ numbers. justificacion las estructuras seran cacheadas . nota al margen el numero de identificacion para las estructuras deberia ser el mismo indice de el slice stObjects a cambio de usar [hom][log] solo numero uint16 o 32 para el wire format que numero me recomiendas? porfavor aclarame todas las dudas antes de continuar
-
-# RESPONSE
-
-## Análisis Técnico: Nivel 3 con Restricciones
-
-### **Soporte Propuesto:**
-```go
-type User struct {
-    Name string
-    Age int32
-    Addresses []Address  // ✅ slice de structs (1 nivel)
-    Tags []string        // ✅ slice de primitivos
-    Scores []int32       // ✅ slice de primitivos
-}
-
-type Address struct {
-    Street string        // ✅ primitivos
-    Number uint16        // ✅ primitivos
-    // NO permitir: Contacts []Contact ❌ (sería nivel 2)
-}
-```
-
-**Justificación válida**: Cache global hace viable el análisis recursivo.
-
----
-
-## **Identificación Numérica: uint16 vs uint32**
-
-### **uint16 (2 bytes)**
-- **Rango**: 0-65,535 tipos únicos
-- **Pros**: 
-  - Menor overhead (2 bytes vs 6 bytes actuales)
-  - Suficiente para aplicaciones típicas
-  - Comparación de enteros más rápida que strings
-- **Contras**: 
-  - Límite de 65K tipos por aplicación
-  - Requiere coordinación de IDs entre front/back
-
-### **uint32 (4 bytes)**
-- **Rango**: 0-4,294,967,295 tipos únicos  
-- **Pros**:
-  - Prácticamente ilimitado
-  - Futuro-proof
-- **Contras**:
-  - 4 bytes vs 2 bytes overhead
-  - Overkill para la mayoría de casos
-
-**Recomendación: uint16** - 65K tipos es más que suficiente para cualquier aplicación realista.
-
----
-
-## **Dudas Críticas a Resolver**
-
-### **1. Gestión de IDs en el Cache**
-```go
-type stObject struct {
-    stID     uint16      // índice en slice = ID del tipo
-    stName   string      // mantener para debugging
-    stFields []stField
-    offsets  []uintptr
-}
-```
-
-**¿Cómo sincronizas los IDs entre frontend y backend?**
-
-**Opción A: Manual**
-```go
-// Mismo orden requerido en ambos lados
-h.AddStructsObject(User{}, Address{}, Contact{}) // User=0, Address=1, Contact=2
-```
-
-**Opción B: Determinística**
-```go
-// Ordenar por nombre antes de asignar IDs
-sort.Slice(stObjects, func(i, j int) bool {
-    return stObjects[i].stName < stObjects[j].stName
-})
-```
-
-### **2. Wire Format con Dependencias**
-
-**¿Cómo manejas las dependencias en el wire format?**
-
-**Ejemplo**: `User` contiene `[]Address`
-- ¿Envías solo el ID de `User` (0) y asumes que el decoder conoce `Address`?
-- ¿O envías ambos IDs en el header?
-
-**Opción A: Solo tipo principal**
-```
-[version][main_type_id=0][count][user_data_with_addresses...]
-```
-
-**Opción B: Lista de dependencias**
-```
-[version][dep_count=2][type_id=0][type_id=1][count][data...]
-```
-
-### **3. Validación de Dependencias**
-
-**¿Qué pasa si el decoder no tiene `Address` registrado cuando llega `User`?**
-
-**Opción A: Error inmediato**
-```go
-if !h.hasType(addressID) {
-    return fmt.Errorf("dependency type %d not registered", addressID)
-}
-```
-
-**Opción B: Lazy loading**
-```go
-// Permitir decode parcial, error solo al acceder Address
-```
-
-### **4. Detección de Dependencias**
-
-**¿Cómo detectas automáticamente las dependencias al registrar?**
-
-```go
-type User struct {
-    Addresses []Address  // necesita detectar que Address es dependencia
-    Contact Contact      // necesita detectar que Contact es dependencia
-}
-```
-
-**¿Analizas recursivamente todos los campos durante `AddStructsObject()`?**
-
-### **5. Slices de Primitivos vs Slices de Structs**
-
-**Wire format diferente:**
-```go
-// Slice de primitivos
-Tags []string → [varint_count][string1][string2]...
-
-// Slice de structs  
-Addresses []Address → [varint_count][address1_fields][address2_fields]...
-```
-
-**¿Mismo encoding para ambos o diferenciado?**
-
-### **6. Recursión de Análisis**
-
-**¿Límites de recursión para evitar stack overflow?**
-```go
-type A struct { B []B }
-type B struct { A []A }  // ciclo infinito potencial
-```
-
-**¿Detección de ciclos o prohibición explícita?**
-
-### **7. Orden de Registro**
-
-**¿Importa el orden de registro?**
-```go
-// ¿Esto falla?
-h.AddStructsObject(User{})    // User referencia Address
-h.AddStructsObject(Address{}) // Address registrado después
-
-// ¿O esto es obligatorio?
-h.AddStructsObject(Address{}) // dependencias primero
-h.AddStrut{})    // tipos que dependen después
-```
-
----
-
-## **Decisiones Inmediatas Necesarias**
-
-1. **uint16 o uint32** para type IDs?
-2. **¿Cómo sincronizar IDs** entre front/back?
-3. **¿Wire format incluye dependencias** o solo tipo principal?
-4. **¿Validación inmediata** de dependencias o lazy?
-5. **¿Orden de registro** importa?
-6. **¿Detección automática** de dependencias o manual?
-7. **¿Límites de recursión** para evitar ciclos?
-
-**¿Cuáles son tus preferencias para cada una de estas decisiones?**
-
-# USER
-
-0-la identifacion numerica uint16 Ok
-
-1-A manual, ej arq propuesta para cargar la configuracion manual
-```md
-AppName/                        
-│
-├── modules/                    # 🔧 Lógica modular
-│   ├── modules.go              #init tinybin and h.AddStrctsObjects here
-│   │
-│   ├── home/                   # 🏠 Módulo
-│   │   ├── auth.go             # lógica de autenticación
-│   │   ├── b.api.go            # 🔙 Backend API (// +build !wasm)
-│   │   ├── f.auth.go           # 🌐 Frontend auth (// +build wasm)
-│   │   └── handlers.go         # Handlers compartidos
-│   │
-│   ├── users/                  # 👥 Módulo de usuarios
-│   │   ├── user.go             # Modelos de datos
-│   │   ├── b.api.go            # 🔙 Backend API endpoints
-│   │   ├── f.users.go          # 🌐 Frontend usuarios (// +build wasm)
-│   │   └── f.events.go         # 🌐 Frontend pub/sub
-│   │
-│   └── medical/                # 🏥 Módulo médico
-│       ├── patient.go          # Modelo de paciente
-│       ├── b.api.go            # 🔙 Backend API
-│       ├── f.medical.go        # 🌐 Frontend (// +build wasm)
-│       └── handlers.go         
-│
-├── pwa/                       
-│   ├── theme/              
-│   │   ├── css/               
-│   │   └── js/                
-│   │
-│   ├── public/ 
-│   │   ├── main.js
-│   │   ├── style.css          
-│   │   ├── AppName.wasm
-│   │   └── index.html
-│   │
-│   ├── main.server.go          # 🔙 use tinybin from modules.go // +build !wasm
-│   └── main.wasm.go            # 🌐 use tinybin from modules.go // +build wasm
-```
-
-2- tinybin cuando almacena las estructuras anidadas o suletas debe de hacerlo por separado como stObject{} en stObjects solo debe enviarce la estructura padre para el ejemplo que me pregundas seria solo id User(0) al buscarla debemos identificar el tipo de campo luego si es otra estructua buscar su estructura para encode/decode
-
-3- A error inmediato eso no da seguridad de que solo resibiremos estructuras que se codificaron previamemte (comenta esta como beneficio de esta libreria)
-
-4- analizar recursivamente tolos los camoos durante AddStructObject
-
-5- en este punto 5 necesito que me guies para tomar una buena decision
-
-6- en este punto 6 necesito orientacion para tomar una buena decision
-
-7- si importa front como backen deben compilar el mismo orden como te lo aclare en el punto 1
-
-necesito que me orientes en las preguntas que te respondi y que me agregues mas si aun faltan otras punto. si añades mas por favor agragalas con alternativa y recomendacion segun esta proyecto para tomar una buena desicion
-
-# RESPONSE
 
 
 
