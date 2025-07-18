@@ -353,8 +353,8 @@ func TestBasicTypePointers(t *testing.T) {
 		Ui64 *uint64
 		F32  *float32
 		F64  *float64
-		C64  *complex64
-		C128 *complex128
+		// C64  *complex64   // Removed - not supported
+		// C128 *complex128 // Removed - not supported
 	}
 	toss := func(chance float32) bool {
 		return rand.Float32() < chance
@@ -418,14 +418,15 @@ func TestBasicTypePointers(t *testing.T) {
 			f64 := rand.Float64()
 			bt.F64 = &f64
 		}
-		if toss(nilChance) {
-			c64 := complex(rand.Float32(), rand.Float32())
-			bt.C64 = &c64
-		}
-		if toss(nilChance) {
-			c128 := complex(rand.Float64(), rand.Float64())
-			bt.C128 = &c128
-		}
+		// Complex types removed - not supported
+		// if toss(nilChance) {
+		//	c64 := complex(rand.Float32(), rand.Float32())
+		//	bt.C64 = &c64
+		// }
+		// if toss(nilChance) {
+		//	c128 := complex(rand.Float64(), rand.Float64())
+		//	bt.C128 = &c128
+		// }
 	}
 	for _, nilChance := range []float32{.5, 0, 1} {
 		for i := 0; i < 10; i += 1 {

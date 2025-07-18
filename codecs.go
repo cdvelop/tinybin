@@ -44,12 +44,8 @@ func (c *reflectArrayCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err erro
 		if err != nil {
 			return err
 		}
-		addr, err := idx.Addr()
-		if err != nil {
-			return err
-		}
-		v := tinyreflect.Indirect(addr)
-		if err = c.elemCodec.EncodeTo(e, v); err != nil {
+		// Use the element directly without Addr() - it should already be the right type
+		if err = c.elemCodec.EncodeTo(e, idx); err != nil {
 			return err
 		}
 	}
@@ -510,7 +506,7 @@ func (c reflectStructCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err erro
 
 // Decode decodes into a reflect value from the decoder.
 func (c reflectStructCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
-	for i, fieldCodec := range c {
+	for _, fieldCodec := range c {
 		v, err := rv.Field(fieldCodec.Index)
 		if err != nil {
 			return err
@@ -518,12 +514,21 @@ func (c reflectStructCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err erro
 
 		// Debug: Check if codec is nil
 		if fieldCodec.Codec == nil {
-			return Err(D.Field, i, "codec", D.Nil)
+			return Err(D.Field, fieldCodec.Index, "codec", D.Nil)
 		}
 
-		// For now, use simplified approach - just decode to the field directly
-		// TODO: Implement proper Kind() and CanSet() methods in tinyreflect
-		err = fieldCodec.Codec.DecodeTo(d, v)
+		// Follow the original logic: handle pointers vs regular fields differently
+		switch v.Kind() {
+		case K.Pointer:
+			// For pointer fields, pass the value directly to the codec
+			err = fieldCodec.Codec.DecodeTo(d, v)
+		default:
+			// For non-pointer fields that can be set, use Indirect
+			// TODO: Implement CanSet() check when available
+			indirect := tinyreflect.Indirect(v)
+			err = fieldCodec.Codec.DecodeTo(d, indirect)
+		}
+
 		if err != nil {
 			return err
 		}
