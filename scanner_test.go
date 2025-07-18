@@ -3,7 +3,6 @@ package tinybin
 import (
 	"bytes"
 	"reflect"
-	"sync"
 	"testing"
 )
 
@@ -63,7 +62,6 @@ type Partition struct {
 }
 
 type Strings struct {
-	lock sync.Mutex `binary:"-"`
 	Key  string
 	Fill []uint64
 	Hash []uint32

@@ -30,7 +30,6 @@ func Unmarshal(b []byte, v interface{}) (err error) {
 // Decoder represents a binary decoder.
 type Decoder struct {
 	reader  reader
-	scratch [10]byte
 	schemas map[reflect.Type]Codec
 }
 

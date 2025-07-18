@@ -2,7 +2,6 @@ package tinybin
 
 import (
 	"bytes"
-	"errors"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -160,12 +159,21 @@ type s2 struct {
 	b []byte
 }
 
+func newError(msg string) error { return &errString{msg} }
+
+type errString struct{ s string }
+
+func (e *errString) Error() string { return e.s }
+
+var errExpectedLen1 = newError("expected data to be length 1")
+
 func (s *s2) UnmarshalBinary(data []byte) error {
 	if len(data) != 1 {
-		return errors.New("expected data to be length 1")
+		return errExpectedLen1
 	}
 	s.b = data
 	return nil
+
 }
 
 func (s *s2) MarshalBinary() (data []byte, err error) {

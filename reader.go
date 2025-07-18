@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"errors"
+	. "github.com/cdvelop/tinystring"
 	"io"
 )
 
@@ -13,7 +13,7 @@ const (
 	maxVarintLen64 = 10 * 7
 )
 
-var overflow = errors.New("binary: varint overflows a 64-bit integer")
+var errOverflow = Err("binary: varint overflow")
 
 // reader represents a required contract for a decoder to work properly
 type reader interface {
@@ -118,13 +118,13 @@ func (r *sliceReader) ReadUvarint() (uint64, error) {
 		r.offset++
 		if b < 0x80 {
 			if s == maxVarintLen64-7 && b > 1 {
-				return x, overflow
+				return x, errOverflow
 			}
 			return x | uint64(b)<<s, nil
 		}
 		x |= uint64(b&0x7f) << s
 	}
-	return x, overflow
+	return x, errOverflow
 }
 
 // ReadVarint reads an encoded signed integer from r and returns it as an int64.
@@ -174,7 +174,7 @@ func (r *streamReader) Slice(n int) (buffer []byte, err error) {
 	if n <= 10 {
 		buffer = r.scratch[:n]
 	} else {
-		buffer = make([]byte, n, n)
+		buffer = make([]byte, n)
 	}
 
 	_, err = io.ReadFull(r, buffer)

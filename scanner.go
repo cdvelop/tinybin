@@ -1,7 +1,7 @@
 package tinybin
 
 import (
-	"errors"
+	. "github.com/cdvelop/tinystring"
 	"reflect"
 	"sync"
 )
@@ -195,7 +195,7 @@ func scanType(t reflect.Type) (Codec, error) {
 		return new(float64Codec), nil
 	}
 
-	return nil, errors.New("binary: unsupported type " + t.String())
+	return nil, Err(D.Type, D.Binary, t.String(), D.Not, D.Supported)
 }
 
 type scannedStruct struct {

@@ -2,7 +2,7 @@ package tinybin
 
 import (
 	"encoding/binary"
-	"errors"
+	. "github.com/cdvelop/tinystring"
 	"reflect"
 )
 
@@ -144,7 +144,7 @@ func (c *byteSliceCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
 func (c *byteSliceCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) {
 	var l uint64
 	if l, err = d.ReadUvarint(); err == nil && l > 0 {
-		data := make([]byte, int(l), int(l))
+		data := make([]byte, int(l))
 		if _, err = d.Read(data); err == nil {
 			rv.Set(reflect.ValueOf(data))
 		}
@@ -324,7 +324,7 @@ type customCodec struct {
 func (c *customCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
 	m := c.GetMarshalBinary(rv)
 	if m == nil {
-		return errors.New("MarshalBinary not found on " + rv.Type().String())
+		return Err("MarshalBinary method not found on", rv.Type().String())
 	}
 
 	// Special-case for pointers
