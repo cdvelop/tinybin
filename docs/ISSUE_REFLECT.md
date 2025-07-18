@@ -95,14 +95,49 @@ FAIL: TestSliceOfTimePtrs (uses time.Time - expected)
 - Custom marshaling methods (`MarshalBinary`, `UnmarshalBinary`)
 
 ## Key Differences: reflect vs tinyreflect
+
+### 🚨 Critical Error Handling Difference
+**reflect (standard library)**: Uses `panic()` for error conditions
+**tinyreflect**: Returns `error` instead of panicking
+
+This is a **FUNDAMENTAL** difference that affects ALL code migration:
+- `reflect.Type.Field(i)` → panics if index out of bounds
+- `tinyreflect.Type.Field(i)` → returns `(StructField, error)`
+- `reflect.Value.Interface()` → panics if value is not accessible
+- `tinyreflect.Value.Interface()` → returns `(interface{}, error)`
+
+**Migration Pattern**: ALL tinyreflect calls must handle errors properly to prevent system crashes.
+
+### API Comparison
 | Feature | reflect | tinyreflect |
 |---------|---------|-------------|
+| **Error Handling** | `panic()` | `error` return values |
 | `reflect.Value` | Full API | Minimal: `Type()`, `Field()`, `Interface()` |
 | `reflect.Type` | Full API | Minimal: `NumField()`, `NameByIndex()`, `Kind()` |
+| `Type.Field(i)` | Panics on bounds | Returns `(StructField, error)` |
+| `Value.Interface()` | Panics on access | Returns `(interface{}, error)` |
 | Method calls | `reflect.Method.Call()` | ❌ Not supported |
 | Struct names | `Type.Name()` | ❌ Not supported (use `StructID()`) |
 | Custom marshaling | Supported | ❌ Not supported |
 | Complex types | Supported | ❌ Not supported |
+
+### Error Handling Requirements
+Every tinyreflect call must be wrapped with error checking:
+```go
+// ❌ OLD (reflect - can panic):
+field := t.Field(i)
+value := v.Interface()
+
+// ✅ NEW (tinyreflect - returns errors):
+field, err := t.Field(i)
+if err != nil {
+    return nil, err
+}
+value, err := v.Interface()
+if err != nil {
+    return nil, err
+}
+```
 
 ## Files to Modify
 
@@ -118,12 +153,13 @@ FAIL: TestSliceOfTimePtrs (uses time.Time - expected)
 ### 2. `/scanner.go` - Type scanning logic
 **Changes:**
 - Replace `reflect.Type` with `tinyreflect.Type`
-- Remove `scanBinaryMarshaler()` function
-- Remove `scanCustomCodec()` function
-- Update `scanType()` to handle only supported types
-- Remove complex64/complex128 cases
-- Remove map support cases
-- Simplify struct scanning logic
+- **CRITICAL**: Add error handling for all tinyreflect calls (no more panics!)
+- Update `scanType()` to handle `tinyreflect.Type.Kind()` with error checking
+- Update `scanStruct()` to handle `tinyreflect.Type.Field(i)` with error checking
+- Update `scanStruct()` to handle `tinyreflect.Type.NumField()` with error checking
+- Remove complex64/complex128 cases (already done in Phase 1)
+- Remove map support cases (already done in Phase 1)
+- Simplify struct scanning logic with proper error propagation
 
 ### 3. `/encoder.go` - Binary encoder
 **Changes:**
