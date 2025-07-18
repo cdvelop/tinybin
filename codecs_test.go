@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // Message represents a message to be flushed
@@ -38,15 +36,15 @@ func TestBinaryTime(t *testing.T) {
 	output := []byte{0x1, 0xf, 0x1, 0x0, 0x0, 0x0, 0xe, 0xc8, 0x75, 0x9a, 0xa5, 0x0, 0x0, 0x0, 0x6, 0xff, 0xff}
 
 	b, err := Marshal(&input)
-	assert.NoError(t, err)
-	assert.Equal(t, output, b)
+	assertNoError(t, err)
+	assertEqualBytes(t, output, b)
 
 	var v []time.Time
 	err = Unmarshal(b, &v)
 
-	assert.NoError(t, err)
-	assert.Equal(t, input, v)
-	assert.Equal(t, 1, len(v))
+	assertNoError(t, err)
+	assertEqual(t, input, v)
+	assertEqual(t, 1, len(v))
 }
 
 // Message represents a message to be flushed
@@ -68,13 +66,13 @@ func TestBinaryEncode_EOF(t *testing.T) {
 	output := []byte{0x0}
 
 	b, err := Marshal(v)
-	assert.NoError(t, err)
-	assert.Equal(t, output, b)
+	assertNoError(t, err)
+	assertEqualBytes(t, output, b)
 
 	s := &sliceStruct{}
 	err = Unmarshal(b, s)
-	assert.NoError(t, err)
-	assert.Equal(t, v, s)
+	assertNoError(t, err)
+	assertEqual(t, v, s)
 }
 
 func TestBinaryEncodeSimpleStruct(t *testing.T) {
@@ -87,13 +85,13 @@ func TestBinaryEncodeSimpleStruct(t *testing.T) {
 	output := []byte{0x5, 0x52, 0x6f, 0x6d, 0x61, 0x6e, 0xf, 0x1, 0x0, 0x0, 0x0, 0xe, 0xc8, 0x75, 0x9a, 0xa5, 0x0, 0x0, 0x0, 0x6, 0xff, 0xff, 0x2, 0x68, 0x69, 0x3, 0x1, 0x2, 0x3}
 
 	b, err := Marshal(v)
-	assert.NoError(t, err)
-	assert.Equal(t, output, b)
+	assertNoError(t, err)
+	assertEqualBytes(t, output, b)
 
 	s := &simpleStruct{}
 	err = Unmarshal(b, s)
-	assert.NoError(t, err)
-	assert.Equal(t, v, s)
+	assertNoError(t, err)
+	assertEqual(t, v, s)
 }
 
 func TestBinarySimpleStructSlice(t *testing.T) {
@@ -114,9 +112,9 @@ func TestBinarySimpleStructSlice(t *testing.T) {
 	var v []simpleStruct
 	err = Unmarshal(b, &v)
 
-	assert.NoError(t, err)
-	assert.Equal(t, input, v)
-	assert.Equal(t, 2, len(v))
+	assertNoError(t, err)
+	assertEqual(t, input, v)
+	assertEqual(t, 2, len(v))
 }
 
 type s1 struct {
@@ -149,13 +147,13 @@ var (
 
 func TestBinaryEncodeComplex(t *testing.T) {
 	b, err := Marshal(s1v)
-	assert.NoError(t, err)
-	assert.Equal(t, svb, b)
+	assertNoError(t, err)
+	assertEqual(t, svb, b)
 
 	s := &s1{}
 	err = Unmarshal(b, s)
-	assert.NoError(t, err)
-	assert.Equal(t, s1v, s)
+	assertNoError(t, err)
+	assertEqual(t, s1v, s)
 }
 
 type s2 struct {
@@ -177,16 +175,16 @@ func (s *s2) MarshalBinary() (data []byte, err error) {
 func TestBinaryMarshalUnMarshaler(t *testing.T) {
 	s2v := &s2{[]byte{0x13}}
 	b, err := Marshal(s2v)
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x1, 0x13}, b)
+	assertNoError(t, err)
+	assertEqualBytes(t, []byte{0x1, 0x13}, b)
 }
 
 func TestMarshalUnMarshalTypeAliases(t *testing.T) {
 	type Foo int64
 	f := Foo(32)
 	b, err := Marshal(f)
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x40}, b)
+	assertNoError(t, err)
+	assertEqual(t, []byte{0x40}, b)
 }
 
 func TestStructWithStruct(t *testing.T) {
@@ -531,26 +529,30 @@ func Test_Float32(t *testing.T) {
 	v := float32(1.15)
 
 	b, err := Marshal(&v)
-	assert.NoError(t, err)
-	assert.NotNil(t, b)
+	assertNoError(t, err)
+	if b == nil {
+		t.Error("Expected non-nil value")
+	}
 
 	var o float32
 	err = Unmarshal(b, &o)
-	assert.NoError(t, err)
-	assert.Equal(t, v, o)
+	assertNoError(t, err)
+	assertEqual(t, v, o)
 }
 
 func Test_Float64(t *testing.T) {
 	v := float64(1.15)
 
 	b, err := Marshal(&v)
-	assert.NoError(t, err)
-	assert.NotNil(t, b)
+	assertNoError(t, err)
+	if b == nil {
+		t.Error("Expected non-nil value")
+	}
 
 	var o float64
 	err = Unmarshal(b, &o)
-	assert.NoError(t, err)
-	assert.Equal(t, v, o)
+	assertNoError(t, err)
+	assertEqual(t, v, o)
 }
 
 func TestSliceOfPtrs(t *testing.T) {
@@ -560,13 +562,15 @@ func TestSliceOfPtrs(t *testing.T) {
 
 	v := []*A{{1}, nil, {2}}
 	b, err := Marshal(v)
-	assert.NoError(t, err)
-	assert.NotNil(t, b)
+	assertNoError(t, err)
+	if b == nil {
+		t.Error("Expected non-nil value")
+	}
 
 	var o []*A
 	err = Unmarshal(b, &o)
-	assert.NoError(t, err)
-	assert.Equal(t, v, o)
+	assertNoError(t, err)
+	assertEqual(t, v, o)
 }
 
 func TestSliceOfTimePtrs(t *testing.T) {
@@ -579,21 +583,54 @@ func TestSliceOfTimePtrs(t *testing.T) {
 	x := time.Unix(1637686933, 0)
 	v := []*A{{&x, nil, x}}
 	b, err := Marshal(v)
-	assert.NoError(t, err)
-	assert.NotNil(t, b)
+	assertNoError(t, err)
+	if b == nil {
+		t.Error("Expected non-nil value")
+	}
 
 	var o []*A
 	err = Unmarshal(b, &o)
-	assert.NoError(t, err)
-	assert.Equal(t, v, o)
+	assertNoError(t, err)
+	assertEqual(t, v, o)
 }
 
 func TestEncodeBigStruct(t *testing.T) {
 	input := newBigStruct()
 	b, err := Marshal(input)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
 
 	var output bigStruct
-	assert.NoError(t, Unmarshal(b, &output))
-	assert.Equal(t, input, &output)
+	if err := Unmarshal(b, &output); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if !reflect.DeepEqual(input, &output) {
+		t.Errorf("Expected %v, got %v", input, &output)
+	}
+}
+
+// Helper functions for testing
+func assertEqual(t *testing.T, expected, actual interface{}) {
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("Expected %v, got %v", expected, actual)
+	}
+}
+
+func assertNoError(t *testing.T, err error) {
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+}
+
+func assertEqualBytes(t *testing.T, expected, actual []byte) {
+	if !bytes.Equal(expected, actual) {
+		t.Errorf("Expected %v, got %v", expected, actual)
+	}
+}
+
+func assertEqualInt(t *testing.T, expected, actual int) {
+	if expected != actual {
+		t.Errorf("Expected %d, got %d", expected, actual)
+	}
 }

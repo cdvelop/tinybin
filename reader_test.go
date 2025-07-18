@@ -6,18 +6,24 @@ import (
 	"math"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestReader_Slice(t *testing.T) {
 	r := newSliceReader([]byte("0123456789"))
 
 	out, err := r.Slice(3)
-	assert.NoError(t, err)
-	assert.Len(t, out, 3)
-	assert.Equal(t, "012", string(out))
-	assert.Equal(t, 7, r.Len())
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if len(out) != 3 {
+		t.Errorf("Expected length 3, got %d", len(out))
+	}
+	if string(out) != "012" {
+		t.Errorf("Expected '012', got '%s'", string(out))
+	}
+	if r.Len() != 7 {
+		t.Errorf("Expected 7, got %d", r.Len())
+	}
 }
 
 func TestReaderEOF(t *testing.T) {
@@ -25,7 +31,9 @@ func TestReaderEOF(t *testing.T) {
 
 	for size := 0; size < len(b)-1; size++ {
 		var output bigStruct
-		assert.Error(t, Unmarshal(b[0:size], &output))
+		if err := Unmarshal(b[0:size], &output); err == nil {
+			t.Error("Expected error, got nil")
+		}
 	}
 }
 
@@ -35,7 +43,9 @@ func TestStreamReader(t *testing.T) {
 
 	dec := NewDecoder(newNetworkSource(b))
 	out := new(bigStruct)
-	assert.NoError(t, dec.Decode(out))
+	if err := dec.Decode(out); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 }
 
 // --------------------------------------- Big Structure (Every Field Type) ---------------------------------------

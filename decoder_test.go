@@ -2,26 +2,35 @@ package tinybin
 
 import (
 	"io"
+	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestBinaryDecodeStruct(t *testing.T) {
 	s := &s0{}
 	err := Unmarshal(s0b, s)
-	assert.NoError(t, err)
-	assert.Equal(t, s0v, s)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(s0v, s) {
+		t.Errorf("Expected %v, got %v", s0v, s)
+	}
 }
 
 func TestBinaryDecodeToValueErrors(t *testing.T) {
 	b := []byte{1, 0, 0, 0}
 	var v uint32
 	err := Unmarshal(b, v)
-	assert.Error(t, err)
+	if err == nil {
+		t.Error("Expected error")
+	}
 	err = Unmarshal(b, &v)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(1), v)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(uint32(1), v) {
+		t.Errorf("Expected %v, got %v", uint32(1), v)
+	}
 }
 
 type oneByteReader struct {
@@ -48,9 +57,15 @@ func (r *oneByteReader) Read(buf []byte) (n int, err error) {
 func TestDecodeFromReader(t *testing.T) {
 	data := "data string"
 	encoded, err := Marshal(data)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	decoder := NewDecoder(&oneByteReader{content: encoded})
 	str, err := decoder.ReadString()
-	assert.NoError(t, err)
-	assert.Equal(t, data, str)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(data, str) {
+		t.Errorf("Expected %v, got %v", data, str)
+	}
 }

@@ -3,10 +3,9 @@ package tinybin
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 	"testing"
 	"unsafe"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var testMsg = msg{
@@ -57,13 +56,21 @@ func Test_Full(t *testing.T) {
 	}
 
 	b, err := Marshal(&v)
-	assert.NoError(t, err)
-	assert.NotNil(t, b)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if b == nil {
+		t.Error("Expected non-nil bytes")
+	}
 
 	var o composite
 	err = Unmarshal(b, &o)
-	assert.NoError(t, err)
-	assert.Equal(t, v, o)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(v, o) {
+		t.Errorf("Expected %v, got %v", v, o)
+	}
 }
 
 func newComposite() composite {
@@ -146,24 +153,39 @@ func BenchmarkJSON(b *testing.B) {
 
 func TestBinaryEncodeStruct(t *testing.T) {
 	b, err := Marshal(s0v)
-	assert.NoError(t, err)
-	assert.Equal(t, s0b, b)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !bytes.Equal(s0b, b) {
+		t.Errorf("Expected %v, got %v", s0b, b)
+	}
 }
 
 func TestEncoderSizeOf(t *testing.T) {
 	var e Encoder
-	assert.Equal(t, 56, int(unsafe.Sizeof(e)))
+	size := int(unsafe.Sizeof(e))
+	if size != 56 {
+		t.Errorf("Expected %v, got %v", 56, size)
+	}
 }
 
 func TestMarshalWithCustomCodec(t *testing.T) {
 	v := testCustom("custom codec")
 
 	b, err := Marshal(v)
-	assert.NoError(t, err)
-	assert.NotNil(t, b)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if b == nil {
+		t.Error("Expected non-nil bytes")
+	}
 
 	var out testCustom
 	err = Unmarshal(b, &out)
-	assert.NoError(t, err)
-	assert.Equal(t, v, out)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(v, out) {
+		t.Errorf("Expected %v, got %v", v, out)
+	}
 }
