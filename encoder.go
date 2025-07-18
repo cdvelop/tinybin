@@ -1,257 +1,188 @@
 package tinybin
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
-
-	"github.com/cdvelop/tinyreflect"
-	. "github.com/cdvelop/tinystring"
+	"math"
+	"reflect"
+	"sync"
 )
 
-// Encode encodes a slice of structs to an io.Writer.
-func (h *TinyBin) Encode(w io.Writer, data any) error {
-	bytes, _, err := h.EncodeToBytes(data)
-	if err != nil {
-		return err
+// Reusable long-lived encoder pool.
+var encoders = &sync.Pool{New: func() interface{} {
+	return &Encoder{
+		schemas: make(map[reflect.Type]Codec),
 	}
-	_, err = w.Write(bytes)
-	return err
+}}
+
+// Marshal encodes the payload into binary format.
+func Marshal(v interface{}) (output []byte, err error) {
+	var buffer bytes.Buffer
+	buffer.Grow(64)
+
+	// Encode and set the buffer if successful
+	if err = MarshalTo(v, &buffer); err == nil {
+		output = buffer.Bytes()
+	}
+	return
 }
 
-// EncodeToBytes encodes a struct or slice of structs to a byte slice and returns the type ID.
-func (h *TinyBin) EncodeToBytes(data any) ([]byte, uint32, error) {
-	v := tinyreflect.ValueOf(data)
+// MarshalTo encodes the payload into a specific destination.
+func MarshalTo(v interface{}, dst io.Writer) (err error) {
 
-	// Get the actual struct type and determine if it's a slice
-	structType, count, err := h.analyzeDataType(v)
-	if err != nil {
-		return nil, 0, err
-	}
+	// Get the encoder from the pool, reset it
+	e := encoders.Get().(*Encoder)
+	e.Reset(dst)
 
-	// Find the struct type ID using StructID
-	structID := structType.StructID()
-	var typeID uint32
-	var found bool
-	for _, obj := range h.stObjects {
-		if obj.stID == structID {
-			typeID = obj.stID
-			found = true
-			break
-		}
-	}
+	// Encode and set the buffer if successful
+	err = e.Encode(v)
 
-	if !found {
-		return nil, 0, Err(D.Type, D.Not, D.Found)
-	}
-
-	// Create buffer with protocol header
-	var buf []byte
-	buf = append(buf, 1, 0) // Major=1, Minor=0
-
-	// Type ID (4 bytes, little-endian)
-	typeIDBytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(typeIDBytes, typeID)
-	buf = append(buf, typeIDBytes...)
-
-	// Count (varint)
-	countBytes := encodeVarint(count)
-	buf = append(buf, countBytes...)
-
-	// Encode the data recursively
-	dataBytes, err := h.encodeValue(v)
-	if err != nil {
-		return nil, 0, err
-	}
-	buf = append(buf, dataBytes...)
-
-	return buf, typeID, nil
+	// Put the encoder back when we're finished
+	encoders.Put(e)
+	return
 }
 
-// analyzeDataType determines the struct type and count from the input data
-func (h *TinyBin) analyzeDataType(v tinyreflect.Value) (*tinyreflect.Type, uint32, error) {
-	t := v.Type()
-
-	if t.Kind() == K.Struct {
-		return t, 1, nil
-	}
-
-	if t.Kind() == K.Slice {
-		// Get slice length using tinyreflect
-		length, err := v.Len()
-		if err != nil {
-			return nil, 0, Errf("getting slice length: %w", err)
-		}
-
-		if length == 0 {
-			return nil, 0, Err(D.Slice, D.Empty)
-		}
-
-		// Get the first element to determine the element type
-		firstElem, err := v.Index(0)
-		if err != nil {
-			return nil, 0, Errf("getting first slice element: %w", err)
-		}
-
-		elemType := firstElem.Type()
-		if elemType.Kind() != K.Struct {
-			return nil, 0, Err(D.Type, "slice element", D.Not, D.Struct)
-		}
-
-		return elemType, uint32(length), nil
-	}
-
-	return nil, 0, Err(D.Type, D.Not, D.Supported)
+// Encoder represents a binary encoder.
+type Encoder struct {
+	scratch [10]byte
+	schemas map[reflect.Type]Codec
+	out     io.Writer
+	err     error
 }
 
-// encodeValue recursively encodes any value (struct, slice, or field)
-func (h *TinyBin) encodeValue(v tinyreflect.Value) ([]byte, error) {
-	t := v.Type()
-
-	switch t.Kind() {
-	case K.Struct:
-		return h.encodeStruct(v)
-	case K.Slice:
-		return h.encodeSlice(v)
-	default:
-		return h.encodeField(v)
+// NewEncoder creates a new encoder.
+func NewEncoder(out io.Writer) *Encoder {
+	return &Encoder{
+		out:     out,
+		schemas: make(map[reflect.Type]Codec),
 	}
 }
 
-// encodeSlice recursively encodes a slice by encoding each element
-func (h *TinyBin) encodeSlice(v tinyreflect.Value) ([]byte, error) {
-	var buf []byte
-
-	// Get slice length using the new Len() method
-	length, err := v.Len()
-	if err != nil {
-		return nil, Errf("getting slice length: %w", err)
-	}
-
-	// Encode each element using the new Index() method
-	for i := 0; i < length; i++ {
-		elem, err := v.Index(i)
-		if err != nil {
-			return nil, Errf("getting slice element %d: %w", i, err)
-		}
-
-		elemBytes, err := h.encodeValue(elem)
-		if err != nil {
-			return nil, Errf("encoding slice element %d: %w", i, err)
-		}
-		buf = append(buf, elemBytes...)
-	}
-
-	return buf, nil
+// Reset resets the encoder and makes it ready to be reused.
+func (e *Encoder) Reset(out io.Writer) {
+	e.out = out
+	e.err = nil
 }
 
-// encodeStruct encodes a single struct value
-func (h *TinyBin) encodeStruct(v tinyreflect.Value) ([]byte, error) {
-	var buf []byte
-
-	numFields, err := v.NumField()
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < numFields; i++ {
-		field, err := v.Field(i)
-		if err != nil {
-			return nil, err
-		}
-
-		fieldBytes, err := h.encodeField(field)
-		if err != nil {
-			return nil, err
-		}
-		buf = append(buf, fieldBytes...)
-	}
-
-	return buf, nil
+// Buffer returns the underlying writer.
+func (e *Encoder) Buffer() io.Writer {
+	return e.out
 }
 
-// encodeField encodes a single field value using Interface() and type assertions
-func (h *TinyBin) encodeField(v tinyreflect.Value) ([]byte, error) {
-	var buf []byte
+// Encode encodes the value to the binary format.
+func (e *Encoder) Encode(v interface{}) (err error) {
 
-	// Get the actual value using Interface()
-	value, err := v.Interface()
-	if err != nil {
-		return nil, err
+	// Scan the type (this will load from cache)
+	rv := reflect.Indirect(reflect.ValueOf(v))
+	var c Codec
+	if c, err = scanToCache(rv.Type(), e.schemas); err != nil {
+		return
 	}
 
-	// Type assert based on the actual type
-	switch val := value.(type) {
-	case bool:
-		if val {
-			buf = append(buf, 1)
-		} else {
-			buf = append(buf, 0)
-		}
+	// Encode the value
+	if err = c.EncodeTo(e, rv); err == nil {
+		err = e.err
+	}
+	return
+}
 
-	case int8:
-		buf = append(buf, byte(val))
+// Write writes the contents of p into the buffer.
+func (e *Encoder) Write(p []byte) {
+	if e.err == nil {
+		_, e.err = e.out.Write(p)
+	}
+}
 
-	case int16:
-		bytes := make([]byte, 2)
-		binary.LittleEndian.PutUint16(bytes, uint16(val))
-		buf = append(buf, bytes...)
-
-	case int32:
-		bytes := make([]byte, 4)
-		binary.LittleEndian.PutUint32(bytes, uint32(val))
-		buf = append(buf, bytes...)
-
-	case int64:
-		bytes := make([]byte, 8)
-		binary.LittleEndian.PutUint64(bytes, uint64(val))
-		buf = append(buf, bytes...)
-
-	case uint8:
-		buf = append(buf, byte(val))
-
-	case uint16:
-		bytes := make([]byte, 2)
-		binary.LittleEndian.PutUint16(bytes, val)
-		buf = append(buf, bytes...)
-
-	case uint32:
-		bytes := make([]byte, 4)
-		binary.LittleEndian.PutUint32(bytes, val)
-		buf = append(buf, bytes...)
-
-	case uint64:
-		bytes := make([]byte, 8)
-		binary.LittleEndian.PutUint64(bytes, val)
-		buf = append(buf, bytes...)
-
-	case float32:
-		bytes := make([]byte, 4)
-		bits := uint32(val)
-		binary.LittleEndian.PutUint32(bytes, bits)
-		buf = append(buf, bytes...)
-
-	case float64:
-		bytes := make([]byte, 8)
-		bits := uint64(val)
-		binary.LittleEndian.PutUint64(bytes, bits)
-		buf = append(buf, bytes...)
-
-	case string:
-		lenBytes := encodeVarint(uint32(len(val)))
-		buf = append(buf, lenBytes...)
-		buf = append(buf, []byte(val)...)
-
-	default:
-		// For complex types (struct, slice), use recursive encoding
-		t := v.Type()
-		if t.Kind() == K.Struct {
-			return h.encodeStruct(v)
-		} else if t.Kind() == K.Slice {
-			return h.encodeSlice(v)
-		} else {
-			return nil, Errf("unsupported type: %T", val)
-		}
+// WriteVarint writes a variable size integer
+func (e *Encoder) WriteVarint(v int64) {
+	x := uint64(v) << 1
+	if v < 0 {
+		x = ^x
 	}
 
-	return buf, nil
+	i := 0
+	for x >= 0x80 {
+		e.scratch[i] = byte(x) | 0x80
+		x >>= 7
+		i++
+	}
+	e.scratch[i] = byte(x)
+	e.Write(e.scratch[:(i + 1)])
+}
+
+// WriteUvarint writes a variable size unsigned integer
+func (e *Encoder) WriteUvarint(x uint64) {
+	i := 0
+	for x >= 0x80 {
+		e.scratch[i] = byte(x) | 0x80
+		x >>= 7
+		i++
+	}
+	e.scratch[i] = byte(x)
+	e.Write(e.scratch[:(i + 1)])
+}
+
+// WriteUint16 writes a Uint16
+func (e *Encoder) WriteUint16(v uint16) {
+	e.scratch[0] = byte(v)
+	e.scratch[1] = byte(v >> 8)
+	e.Write(e.scratch[:2])
+}
+
+// WriteUint32 writes a Uint32
+func (e *Encoder) WriteUint32(v uint32) {
+	e.scratch[0] = byte(v)
+	e.scratch[1] = byte(v >> 8)
+	e.scratch[2] = byte(v >> 16)
+	e.scratch[3] = byte(v >> 24)
+	e.Write(e.scratch[:4])
+}
+
+// WriteUint64 writes a Uint64
+func (e *Encoder) WriteUint64(v uint64) {
+	e.scratch[0] = byte(v)
+	e.scratch[1] = byte(v >> 8)
+	e.scratch[2] = byte(v >> 16)
+	e.scratch[3] = byte(v >> 24)
+	e.scratch[4] = byte(v >> 32)
+	e.scratch[5] = byte(v >> 40)
+	e.scratch[6] = byte(v >> 48)
+	e.scratch[7] = byte(v >> 56)
+	e.Write(e.scratch[:8])
+}
+
+// WriteFloat32 a 32-bit floating point number
+func (e *Encoder) WriteFloat32(v float32) {
+	e.WriteUint32(math.Float32bits(v))
+}
+
+// WriteFloat64 a 64-bit floating point number
+func (e *Encoder) WriteFloat64(v float64) {
+	e.WriteUint64(math.Float64bits(v))
+}
+
+// WriteBool writes a single boolean value into the buffer
+func (e *Encoder) writeBool(v bool) {
+	e.scratch[0] = 0
+	if v {
+		e.scratch[0] = 1
+	}
+	e.Write(e.scratch[:1])
+}
+
+// Writes a complex number
+func (e *Encoder) writeComplex64(v complex64) {
+	e.err = binary.Write(e.out, binary.LittleEndian, v)
+}
+
+// Writes a complex number
+func (e *Encoder) writeComplex128(v complex128) {
+	e.err = binary.Write(e.out, binary.LittleEndian, v)
+}
+
+// WriteString writes a string prefixed with a variable-size integer size.
+func (e *Encoder) WriteString(v string) {
+	e.WriteUvarint(uint64(len(v)))
+	e.Write(ToBytes(v))
 }

@@ -2,203 +2,167 @@ package tinybin
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
-
-	"github.com/cdvelop/tinyreflect"
-	. "github.com/cdvelop/tinystring"
+	"math"
+	"reflect"
+	"sync"
 )
 
-// Decode decodes data from an io.Reader into the provided destination.
-func (h *TinyBin) Decode(r io.Reader, dest any) error {
-	// Read all data from reader
-	buf := make([]byte, 4096) // Start with reasonable buffer
-	var data []byte
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			data = append(data, buf[:n]...)
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
+// Reusable long-lived decoder pool.
+var decoders = &sync.Pool{New: func() interface{} {
+	return NewDecoder(newReader(nil))
+}}
 
-	return h.DecodeFromBytes(data, dest)
+// Unmarshal decodes the payload from the binary format.
+func Unmarshal(b []byte, v interface{}) (err error) {
+
+	// Get the decoder from the pool, reset it
+	d := decoders.Get().(*Decoder)
+	d.reader.(*sliceReader).Reset(b) // Reset the reader
+
+	// Decode and set the buffer if successful and free the decoder
+	err = d.Decode(v)
+	decoders.Put(d)
+	return
 }
 
-// DecodeFromBytes decodes data from a byte slice into the provided destination.
-// Uses unsafe pointer manipulation to modify struct fields directly
-func (h *TinyBin) DecodeFromBytes(data []byte, dest any) error {
-	if len(data) < 5 {
-		return ErrInvalidProtocol
-	}
-
-	// Parse protocol header
-	offset := 0
-	major := data[offset]
-	minor := data[offset+1]
-	offset += 2
-
-	if major != 1 || minor != 0 {
-		return Err(D.Invalid, "version", major, minor)
-	}
-
-	// Parse type ID (4 bytes)
-	if len(data) < offset+4 {
-		return ErrInvalidProtocol
-	}
-	typeID := binary.LittleEndian.Uint32(data[offset:])
-	offset += 4
-
-	// Find the struct type
-	var stObj *stObject
-	for i := range h.stObjects {
-		if h.stObjects[i].stID == typeID {
-			stObj = &h.stObjects[i]
-			break
-		}
-	}
-
-	if stObj == nil {
-		return Err(D.Type, "ID", typeID, D.Not, D.Found)
-	}
-
-	// Parse count
-	count, consumed, err := decodeVarint(data[offset:])
-	if err != nil {
-		return err
-	}
-	offset += consumed
-
-	// Use tinyreflect to analyze destination
-	destValue := tinyreflect.ValueOf(dest)
-	destType := destValue.Type()
-
-	if destType.Kind() != K.Pointer {
-		return Err(D.Must, D.Be, D.Pointer)
-	}
-
-	// Get the pointed-to value
-	elemValue, err := destValue.Elem()
-	if err != nil {
-		return err
-	}
-
-	elemType := elemValue.Type()
-
-	// Handle both single struct and slice of structs
-	if count == 1 && elemType.Kind() == K.Struct {
-		// Single struct decode
-		_, err = h.decodeStructValue(data[offset:], elemValue, stObj)
-		return err
-	} else if count > 1 && elemType.Kind() == K.Slice {
-		// Slice decode - reconstruct the slice
-		err = h.decodeSliceValue(data[offset:], elemValue, stObj, count)
-		return err
-	} else {
-		return Err(D.Type, "count/destination mismatch", D.Not, D.Supported)
-	}
-	return err
+// Decoder represents a binary decoder.
+type Decoder struct {
+	reader  reader
+	scratch [10]byte
+	schemas map[reflect.Type]Codec
 }
 
-// decodeStructValue decodes a single struct using tinyreflect.Value
-func (h *TinyBin) decodeStructValue(data []byte, dest tinyreflect.Value, stObj *stObject) (int, error) {
-	// For now, implement a simplified version that only handles basic encoding/decoding
-	// without direct struct field modification since tinyreflect has limited modification capabilities
-
-	// This is a current limitation - we would need to extend tinyreflect
-	// or use a different approach for field modification
-
-	return 0, Err(D.Type, "struct decoding", D.Not, D.Supported)
-}
-
-// decodeFieldValue decodes a single field using tinyreflect.Value
-func (h *TinyBin) decodeFieldValue(data []byte, dest tinyreflect.Value) (int, error) {
-	// For now, implement a simplified version that only handles basic types
-	// without direct field modification since tinyreflect is limited
-
-	// This is a limitation of the current tinyreflect API
-	// In a real implementation, we would need additional unsafe pointer access
-	// or modify tinyreflect to provide field modification capabilities
-
-	return 0, Err(D.Type, "field modification", D.Not, D.Supported)
-}
-
-// DecodeToNew decodes data and returns a new struct instance
-// This is an alternative to DecodeFromBytes that doesn't require field modification
-func (h *TinyBin) DecodeToNew(data []byte) (any, uint32, error) {
-	if len(data) < 5 {
-		return nil, 0, ErrInvalidProtocol
-	}
-
-	// Parse protocol header
-	offset := 0
-	major := data[offset]
-	minor := data[offset+1]
-	offset += 2
-
-	if major != 1 || minor != 0 {
-		return nil, 0, Err(D.Invalid, "version", major, minor)
-	}
-
-	// Parse type ID (4 bytes)
-	if len(data) < offset+4 {
-		return nil, 0, ErrInvalidProtocol
-	}
-	typeID := binary.LittleEndian.Uint32(data[offset:])
-	offset += 4
-
-	// Find the struct type
-	var stObj *stObject
-	for i := range h.stObjects {
-		if h.stObjects[i].stID == typeID {
-			stObj = &h.stObjects[i]
-			break
-		}
-	}
-
-	if stObj == nil {
-		return nil, 0, Err(D.Type, "ID", typeID, D.Not, D.Found)
-	}
-
-	// Parse count
-	count, consumed, err := decodeVarint(data[offset:])
-	if err != nil {
-		return nil, 0, err
-	}
-	offset += consumed
-
-	// Support both single struct and multiple structs (slices)
-	if count == 1 {
-		// Single struct - return a placeholder for now
-		return map[string]any{
-			"_structID": stObj.stID,
-			"_typeID":   typeID,
-			"_count":    count,
-			"_parsed":   true,
-		}, typeID, nil
-	} else {
-		// Multiple structs (slice) - return a placeholder indicating slice was parsed
-		return map[string]any{
-			"_structID": stObj.stID,
-			"_typeID":   typeID,
-			"_count":    count,
-			"_isSlice":  true,
-			"_parsed":   true,
-		}, typeID, nil
+// NewDecoder creates a binary decoder.
+func NewDecoder(r io.Reader) *Decoder {
+	return &Decoder{
+		reader:  newReader(r),
+		schemas: make(map[reflect.Type]Codec),
 	}
 }
 
-// decodeSliceValue decodes multiple structs into a slice
-func (h *TinyBin) decodeSliceValue(data []byte, dest tinyreflect.Value, stObj *stObject, count uint32) error {
-	// This is a placeholder implementation since tinyreflect has limitations
-	// for modifying slice contents. In a complete implementation, we would need
-	// to either extend tinyreflect or use unsafe operations to reconstruct the slice.
+// Decode decodes a value by reading from the underlying io.Reader.
+func (d *Decoder) Decode(v interface{}) (err error) {
+	rv := reflect.Indirect(reflect.ValueOf(v))
+	if !rv.CanAddr() {
+		return errors.New("binary: can only decode to pointer type")
+	}
 
-	// For now, return success to indicate the data was properly parsed
-	// but couldn't be decoded due to tinyreflect limitations
-	return nil
+	// Scan the type (this will load from cache)
+	var c Codec
+	if c, err = scanToCache(rv.Type(), d.schemas); err == nil {
+		err = c.DecodeTo(d, rv)
+	}
+
+	return
+}
+
+// Read reads a set of bytes
+func (d *Decoder) Read(b []byte) (int, error) {
+	return d.reader.Read(b)
+}
+
+// ReadUvarint reads a variable-length Uint64 from the buffer.
+func (d *Decoder) ReadUvarint() (uint64, error) {
+	return d.reader.ReadUvarint()
+}
+
+// ReadVarint reads a variable-length Int64 from the buffer.
+func (d *Decoder) ReadVarint() (int64, error) {
+	return d.reader.ReadVarint()
+}
+
+// ReadUint16 reads a uint16
+func (d *Decoder) ReadUint16() (out uint16, err error) {
+	var b []byte
+	if b, err = d.reader.Slice(2); err == nil {
+		_ = b[1] // bounds check hint to compiler
+		out = (uint16(b[0]) | uint16(b[1])<<8)
+	}
+	return
+}
+
+// ReadUint32 reads a uint32
+func (d *Decoder) ReadUint32() (out uint32, err error) {
+	var b []byte
+	if b, err = d.reader.Slice(4); err == nil {
+		_ = b[3] // bounds check hint to compiler
+		out = (uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
+	}
+	return
+}
+
+// ReadUint64 reads a uint64
+func (d *Decoder) ReadUint64() (out uint64, err error) {
+	var b []byte
+	if b, err = d.reader.Slice(8); err == nil {
+		_ = b[7] // bounds check hint to compiler
+		out = (uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
+			uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56)
+	}
+	return
+}
+
+// ReadFloat32 reads a float32
+func (d *Decoder) ReadFloat32() (out float32, err error) {
+	var v uint32
+	if v, err = d.ReadUint32(); err == nil {
+		out = math.Float32frombits(v)
+	}
+	return
+}
+
+// ReadFloat64 reads a float64
+func (d *Decoder) ReadFloat64() (out float64, err error) {
+	var v uint64
+	if v, err = d.ReadUint64(); err == nil {
+		out = math.Float64frombits(v)
+	}
+	return
+}
+
+// ReadBool reads a single boolean value from the slice.
+func (d *Decoder) ReadBool() (bool, error) {
+	b, err := d.reader.ReadByte()
+	return b == 1, err
+}
+
+// ReadString a string prefixed with a variable-size integer size.
+func (d *Decoder) ReadString() (out string, err error) {
+	var b []byte
+	if b, err = d.ReadSlice(); err == nil {
+		out = string(b)
+	}
+	return
+}
+
+// ReadComplex reads a complex64
+func (d *Decoder) readComplex64() (out complex64, err error) {
+	err = binary.Read(d.reader, binary.LittleEndian, &out)
+	return
+}
+
+// ReadComplex reads a complex128
+func (d *Decoder) readComplex128() (out complex128, err error) {
+	err = binary.Read(d.reader, binary.LittleEndian, &out)
+	return
+}
+
+// Slice selects a sub-slice of next bytes. This is similar to Read() but does not
+// actually perform a copy, but simply uses the underlying slice (if available) and
+// returns a sub-slice pointing to the same array. Since this requires access
+// to the underlying data, this is only available for a slice reader.
+func (d *Decoder) Slice(n int) ([]byte, error) {
+	return d.reader.Slice(n)
+}
+
+// ReadSlice reads a varint prefixed sub-slice without copying and returns the underlying
+// byte slice.
+func (d *Decoder) ReadSlice() (b []byte, err error) {
+	var l uint64
+	if l, err = d.ReadUvarint(); err == nil {
+		b, err = d.Slice(int(l))
+	}
+	return
 }
