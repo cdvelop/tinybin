@@ -2,7 +2,7 @@ package tinybin
 
 import (
 	"encoding/binary"
-	"errors"
+	. "github.com/cdvelop/tinystring"
 	"io"
 	"math"
 	"reflect"
@@ -45,7 +45,7 @@ func NewDecoder(r io.Reader) *Decoder {
 func (d *Decoder) Decode(v interface{}) (err error) {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	if !rv.CanAddr() {
-		return errors.New("binary: can only decode to pointer type")
+		return Err(D.Binary, "Decoder", D.Required, D.Type, D.Pointer)
 	}
 
 	// Scan the type (this will load from cache)

@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	. "github.com/cdvelop/tinystring"
 	"io"
+
+	. "github.com/cdvelop/tinystring"
 )
 
 // MaxVarintLenN is the maximum length of a varint-encoded N-bit integer.
@@ -13,7 +14,7 @@ const (
 	maxVarintLen64 = 10 * 7
 )
 
-var errOverflow = Err("binary: varint overflow")
+var errOverflow = Err(D.Binary, "varint overflow 64-bit integer")
 
 // reader represents a required contract for a decoder to work properly
 type reader interface {

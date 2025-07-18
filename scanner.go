@@ -1,9 +1,10 @@
 package tinybin
 
 import (
-	. "github.com/cdvelop/tinystring"
 	"reflect"
 	"sync"
+
+	. "github.com/cdvelop/tinystring"
 )
 
 // Map of all the schemas we've encountered so far
