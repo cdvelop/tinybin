@@ -51,14 +51,6 @@ func scan(t reflect.Type) (c Codec, err error) {
 
 // ScanType scans the type
 func scanType(t reflect.Type) (Codec, error) {
-	if custom, ok := scanCustomCodec(t); ok {
-		return custom, nil
-	}
-
-	if custom, ok := scanBinaryMarshaler(t); ok {
-		return custom, nil
-	}
-
 	switch t.Kind() {
 	case reflect.Ptr:
 		elemCodec, err := scanType(t.Elem())
@@ -146,22 +138,6 @@ func scanType(t reflect.Type) (Codec, error) {
 
 		return &v, nil
 
-	case reflect.Map:
-		key, err := scanType(t.Key())
-		if err != nil {
-			return nil, err
-		}
-
-		val, err := scanType(t.Elem())
-		if err != nil {
-			return nil, err
-		}
-
-		return &reflectMapCodec{
-			key: key,
-			val: val,
-		}, nil
-
 	case reflect.String:
 		return new(stringCodec), nil
 	case reflect.Bool:
@@ -186,10 +162,6 @@ func scanType(t reflect.Type) (Codec, error) {
 		fallthrough
 	case reflect.Uint64:
 		return new(varuintCodec), nil
-	case reflect.Complex64:
-		return new(complex64Codec), nil
-	case reflect.Complex128:
-		return new(complex128Codec), nil
 	case reflect.Float32:
 		return new(float32Codec), nil
 	case reflect.Float64:
@@ -211,43 +183,6 @@ func scanStruct(t reflect.Type) (meta *scannedStruct) {
 			if t.Field(i).Tag.Get("binary") != "-" {
 				meta.fields = append(meta.fields, i)
 			}
-		}
-	}
-	return
-}
-
-// scanBinaryMarshaler scans whether a type has a custom binary marshaling implemented.
-func scanBinaryMarshaler(t reflect.Type) (Codec, bool) {
-	out := new(customCodec)
-	if m, ok := t.MethodByName("MarshalBinary"); ok {
-		out.marshaler = &m
-	} else if m, ok := reflect.PtrTo(t).MethodByName("MarshalBinary"); ok {
-		out.ptrMarshaler = &m
-	}
-
-	if m, ok := t.MethodByName("UnmarshalBinary"); ok {
-		out.unmarshaler = &m
-	} else if m, ok := reflect.PtrTo(t).MethodByName("UnmarshalBinary"); ok {
-		out.ptrUnmarshaler = &m
-	}
-
-	// Checks whether we have both marshaler and unmarshaler attached
-	if (out.marshaler != nil || out.ptrMarshaler != nil) &&
-		(out.unmarshaler != nil || out.ptrUnmarshaler != nil) {
-		return out, true
-	}
-
-	return nil, false
-}
-
-// scanCustomCodec scans whether a type has a custom codec implemented.
-func scanCustomCodec(t reflect.Type) (out Codec, ok bool) {
-	if m, ok := reflect.PtrTo(t).MethodByName("GetBinaryCodec"); ok {
-		callable := reflect.New(t).Method(m.Index)
-		result := callable.Call([]reflect.Value{})
-		if len(result) == 1 && !result[0].IsNil() {
-			out, ok = result[0].Interface().(Codec)
-			return out, ok
 		}
 	}
 	return
