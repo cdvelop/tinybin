@@ -2,17 +2,18 @@ package tinybin
 
 import (
 	"bytes"
-	"encoding/binary"
 	"io"
 	"math"
-	"reflect"
 	"sync"
+
+	"github.com/cdvelop/tinyreflect"
+	. "github.com/cdvelop/tinystring"
 )
 
 // Reusable long-lived encoder pool.
 var encoders = &sync.Pool{New: func() interface{} {
 	return &Encoder{
-		schemas: make(map[reflect.Type]Codec),
+		schemas: make(map[*tinyreflect.Type]Codec),
 	}
 }}
 
@@ -46,7 +47,7 @@ func MarshalTo(v interface{}, dst io.Writer) (err error) {
 // Encoder represents a binary encoder.
 type Encoder struct {
 	scratch [10]byte
-	schemas map[reflect.Type]Codec
+	schemas map[*tinyreflect.Type]Codec
 	out     io.Writer
 	err     error
 }
@@ -55,7 +56,7 @@ type Encoder struct {
 func NewEncoder(out io.Writer) *Encoder {
 	return &Encoder{
 		out:     out,
-		schemas: make(map[reflect.Type]Codec),
+		schemas: make(map[*tinyreflect.Type]Codec),
 	}
 }
 
@@ -74,9 +75,14 @@ func (e *Encoder) Buffer() io.Writer {
 func (e *Encoder) Encode(v interface{}) (err error) {
 
 	// Scan the type (this will load from cache)
-	rv := reflect.Indirect(reflect.ValueOf(v))
+	rv := tinyreflect.Indirect(tinyreflect.ValueOf(v))
+	typ := rv.Type()
+	if typ == nil {
+		return Errf("cannot encode nil value")
+	}
+
 	var c Codec
-	if c, err = scanToCache(rv.Type(), e.schemas); err != nil {
+	if c, err = scanToCache(typ, e.schemas); err != nil {
 		return
 	}
 
@@ -169,16 +175,6 @@ func (e *Encoder) writeBool(v bool) {
 		e.scratch[0] = 1
 	}
 	e.Write(e.scratch[:1])
-}
-
-// Writes a complex number
-func (e *Encoder) writeComplex64(v complex64) {
-	e.err = binary.Write(e.out, binary.LittleEndian, v)
-}
-
-// Writes a complex number
-func (e *Encoder) writeComplex128(v complex128) {
-	e.err = binary.Write(e.out, binary.LittleEndian, v)
 }
 
 // WriteString writes a string prefixed with a variable-size integer size.

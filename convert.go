@@ -4,7 +4,6 @@
 package tinybin
 
 import (
-	"reflect"
 	"unsafe"
 )
 
@@ -15,8 +14,9 @@ func ToString(b *[]byte) string {
 
 // ToBytes converts a string to a byte slice without allocating.
 func ToBytes(v string) []byte {
-	strHeader := (*reflect.StringHeader)(unsafe.Pointer(&v))
-	bytesData := unsafe.Slice((*byte)(unsafe.Pointer(strHeader.Data)), len(v))
+	// Use unsafe.StringData to get the data pointer directly
+	data := unsafe.StringData(v)
+	bytesData := unsafe.Slice(data, len(v))
 
 	return bytesData
 }

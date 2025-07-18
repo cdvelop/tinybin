@@ -2,11 +2,12 @@ package tinybin
 
 import (
 	"encoding/binary"
-	. "github.com/cdvelop/tinystring"
 	"io"
 	"math"
-	"reflect"
 	"sync"
+
+	"github.com/cdvelop/tinyreflect"
+	. "github.com/cdvelop/tinystring"
 )
 
 // Reusable long-lived decoder pool.
@@ -30,21 +31,22 @@ func Unmarshal(b []byte, v interface{}) (err error) {
 // Decoder represents a binary decoder.
 type Decoder struct {
 	reader  reader
-	schemas map[reflect.Type]Codec
+	schemas map[*tinyreflect.Type]Codec
 }
 
 // NewDecoder creates a binary decoder.
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
 		reader:  newReader(r),
-		schemas: make(map[reflect.Type]Codec),
+		schemas: make(map[*tinyreflect.Type]Codec),
 	}
 }
 
 // Decode decodes a value by reading from the underlying io.Reader.
 func (d *Decoder) Decode(v interface{}) (err error) {
-	rv := reflect.Indirect(reflect.ValueOf(v))
-	if !rv.CanAddr() {
+	rv := tinyreflect.Indirect(tinyreflect.ValueOf(v))
+	canAddr := rv.CanAddr()
+	if !canAddr {
 		return Err(D.Binary, "Decoder", D.Required, D.Type, D.Pointer)
 	}
 
