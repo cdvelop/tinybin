@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	github.com/cdvelop/tinyreflect v0.0.33
-	github.com/cdvelop/tinystring v0.1.44
+	github.com/cdvelop/tinystring v0.1.45
 )
 
 replace github.com/cdvelop/tinyreflect v0.0.27 => ../tinyreflect
