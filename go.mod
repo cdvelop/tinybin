@@ -3,8 +3,8 @@ module github.com/cdvelop/tinybin
 go 1.24.4
 
 require (
-	github.com/cdvelop/tinyreflect v0.0.40
-	github.com/cdvelop/tinystring v0.1.65
+	github.com/cdvelop/tinyreflect v0.0.42
+	github.com/cdvelop/tinystring v0.5.0
 )
 
 replace github.com/cdvelop/tinyreflect v0.0.27 => ../tinyreflect
