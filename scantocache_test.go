@@ -7,15 +7,13 @@ import (
 )
 
 func TestScanToCacheWithNilType(t *testing.T) {
-	// Test what happens when we pass nil to scanToCache
-	cache := make(map[*tinyreflect.Type]Codec)
-
+	// Test what happens when we pass nil to ScanType
 	// This should fail
-	_, err := scanToCache(nil, cache)
+	_, err := ScanType(nil)
 	if err != nil {
-		t.Logf("✅ scanToCache correctly failed with nil: %v", err)
+		t.Logf("✅ ScanType correctly failed with nil: %v", err)
 	} else {
-		t.Error("❌ scanToCache should fail with nil type")
+		t.Error("❌ ScanType should fail with nil type")
 	}
 
 	// Test with valid type
@@ -34,28 +32,28 @@ func TestScanToCacheWithNilType(t *testing.T) {
 		t.Fatal("rv.Type() returned nil")
 	}
 
-	t.Logf("Testing scanToCache with valid type: %p", typ)
+	t.Logf("Testing ScanType with valid type: %p", typ)
 
-	codec, err := scanToCache(typ, cache)
+	codec, err := ScanType(typ)
 	if err != nil {
-		t.Fatalf("scanToCache failed: %v", err)
+		t.Fatalf("ScanType failed: %v", err)
 	}
 
 	if codec == nil {
-		t.Fatal("scanToCache returned nil codec")
+		t.Fatal("ScanType returned nil codec")
 	}
 
-	t.Logf("✅ scanToCache succeeded with codec: %T", codec)
+	t.Logf("✅ ScanType succeeded with codec: %T", codec)
 
-	// Test that it's cached
-	codec2, err := scanToCache(typ, cache)
+	// Test that it works consistently (ScanType doesn't cache, so different instances are expected)
+	codec2, err := ScanType(typ)
 	if err != nil {
-		t.Fatalf("scanToCache failed on second call: %v", err)
+		t.Fatalf("ScanType failed on second call: %v", err)
 	}
 
-	if codec != codec2 {
-		t.Error("❌ scanToCache returned different codec on second call")
+	if codec2 == nil {
+		t.Error("❌ ScanType returned nil codec on second call")
 	} else {
-		t.Log("✅ scanToCache returned cached codec")
+		t.Logf("✅ ScanType returned consistent codec type on second call: %T", codec2)
 	}
 }

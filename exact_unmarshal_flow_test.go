@@ -7,6 +7,7 @@ import (
 )
 
 func TestExactDecodeFlow(t *testing.T) {
+	tb := New()
 	// Reproduce the exact flow from Decode -> Decode -> scanToCache
 	s := &simpleStruct{
 		Name:      "Roman",
@@ -16,7 +17,7 @@ func TestExactDecodeFlow(t *testing.T) {
 	}
 
 	// Encode first (this should work)
-	b, err := Encode(s)
+	b, err := tb.Encode(s)
 	if err != nil {
 		t.Fatalf("Encode failed: %v", err)
 	}
@@ -34,11 +35,10 @@ func TestExactDecodeFlow(t *testing.T) {
 		t.Fatal("rv.Type() is nil - this is the problem")
 	}
 
-	// Step 3: Call scanToCache directly (decoder.go line 52)
-	cache := make(map[*tinyreflect.Type]Codec)
-	codec, err := scanToCache(rv.Type(), cache)
+	// Step 3: Call ScanType directly (this is the public API)
+	codec, err := ScanType(rv.Type())
 	if err != nil {
-		t.Fatalf("scanToCache failed: %v", err)
+		t.Fatalf("ScanType failed: %v", err)
 	}
 
 	t.Logf("scanToCache succeeded: %T", codec)

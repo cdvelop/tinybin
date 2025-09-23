@@ -1,56 +1,12 @@
 package tinybin
 
 import (
-	"sync"
-
 	"github.com/cdvelop/tinyreflect"
 	. "github.com/cdvelop/tinystring"
 )
 
-// Map of all the schemas we've encountered so far
-var schemas = new(sync.Map)
-
-// scanToCache scans the type and caches in the local cache.
-func scanToCache(t *tinyreflect.Type, cache map[*tinyreflect.Type]Codec) (Codec, error) {
-	if c, ok := cache[t]; ok {
-		return c, nil
-	}
-
-	c, err := scan(t)
-	if err != nil {
-		return nil, err
-	}
-
-	cache[t] = c
-	return c, nil
-}
-
-// Scan gets a codec for the type and uses a cached schema if the type was
-// previously scanned.
-func scan(t *tinyreflect.Type) (c Codec, err error) {
-
-	// Attempt to load from cache first
-	if f, ok := schemas.Load(t); ok {
-		c = f.(Codec)
-		return
-	}
-
-	// Scan for the first time
-	c, err = scanType(t)
-	if err != nil {
-		return
-	}
-
-	// Load or store again
-	if f, ok := schemas.LoadOrStore(t, c); ok {
-		c = f.(Codec)
-		return
-	}
-	return
-}
-
 // ScanType scans the type
-func scanType(t *tinyreflect.Type) (Codec, error) {
+func ScanType(t *tinyreflect.Type) (Codec, error) {
 	if t == nil {
 		return nil, Err(D.Value, D.Type, D.Nil)
 	}
@@ -71,7 +27,7 @@ func scanType(t *tinyreflect.Type) (Codec, error) {
 		if err != nil {
 			return nil, err
 		}
-		elemCodec, err := scanType(elem)
+		elemCodec, err := ScanType(elem)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +41,7 @@ func scanType(t *tinyreflect.Type) (Codec, error) {
 		if err != nil {
 			return nil, err
 		}
-		elemCodec, err := scanType(elem)
+		elemCodec, err := ScanType(elem)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +72,7 @@ func scanType(t *tinyreflect.Type) (Codec, error) {
 			if err != nil {
 				return nil, err
 			}
-			elemCodec, err := scanType(elemElem)
+			elemCodec, err := ScanType(elemElem)
 			if err != nil {
 				return nil, err
 			}
@@ -126,7 +82,7 @@ func scanType(t *tinyreflect.Type) (Codec, error) {
 				elemCodec: elemCodec,
 			}, nil
 		default:
-			elemCodec, err := scanType(elem)
+			elemCodec, err := ScanType(elem)
 			if err != nil {
 				return nil, err
 			}
@@ -148,7 +104,7 @@ func scanType(t *tinyreflect.Type) (Codec, error) {
 				// Debug: Print information about the field
 				return nil, Err(D.Field, D.Type, D.Nil, "field", Convert(i).String(), "name", field.Name)
 			}
-			codec, err := scanType(field.Typ)
+			codec, err := ScanType(field.Typ)
 			if err != nil {
 				return nil, err
 			}

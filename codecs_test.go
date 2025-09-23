@@ -59,22 +59,24 @@ type sliceStruct struct {
 }
 
 func TestBinaryEncode_EOF(t *testing.T) {
+	tb := New()
 	v := &sliceStruct{
 		Payload: nil,
 	}
 	output := []byte{0x0}
 
-	b, err := Encode(v)
+	b, err := tb.Encode(v)
 	assertNoError(t, err)
 	assertEqualBytes(t, output, b)
 
 	s := &sliceStruct{}
-	err = Decode(b, s)
+	err = tb.Decode(b, s)
 	assertNoError(t, err)
 	assertEqual(t, v, s)
 }
 
 func TestBinaryEncodeSimpleStruct(t *testing.T) {
+	tb := New()
 	v := &simpleStruct{
 		Name:      "Roman",
 		Timestamp: 1357092245000000006, // Unix timestamp in nanoseconds
@@ -82,18 +84,19 @@ func TestBinaryEncodeSimpleStruct(t *testing.T) {
 		Ssid:      []uint32{1, 2, 3},
 	}
 
-	b, err := Encode(v)
+	b, err := tb.Encode(v)
 	assertNoError(t, err)
 	// For now, let's see what actual output we get
 	t.Logf("Actual output: %v", b)
 
 	s := &simpleStruct{}
-	err = Decode(b, s)
+	err = tb.Decode(b, s)
 	assertNoError(t, err)
 	assertEqual(t, v, s)
 }
 
 func TestBinarySimpleStructSlice(t *testing.T) {
+	tb := New()
 	input := []simpleStruct{{
 		Name:      "Roman",
 		Timestamp: 1357092245000000006, // Unix timestamp in nanoseconds
@@ -106,10 +109,10 @@ func TestBinarySimpleStructSlice(t *testing.T) {
 		Ssid:      []uint32{1, 2, 3},
 	}}
 
-	b, err := Encode(&input)
+	b, err := tb.Encode(&input)
 
 	var v []simpleStruct
-	err = Decode(b, &v)
+	err = tb.Decode(b, &v)
 
 	assertNoError(t, err)
 	assertEqual(t, input, v)
@@ -183,21 +186,24 @@ func (s *s2) EncodeBinary() (data []byte, err error) {
 }
 
 func TestBinaryEncodeUnEncodeer(t *testing.T) {
+	tb := New()
 	s2v := &s2{[]byte{0x13}}
-	b, err := Encode(s2v)
+	b, err := tb.Encode(s2v)
 	assertNoError(t, err)
 	assertEqualBytes(t, []byte{0x1, 0x13}, b)
 }
 
 func TestEncodeUnEncodeTypeAliases(t *testing.T) {
+	tb := New()
 	type Foo int64
 	f := Foo(32)
-	b, err := Encode(f)
+	b, err := tb.Encode(f)
 	assertNoError(t, err)
 	assertEqual(t, []byte{0x40}, b)
 }
 
 func TestStructWithStruct(t *testing.T) {
+	tb := New()
 	type T1 struct {
 		ID    uint64
 		Name  string
@@ -212,14 +218,14 @@ func TestStructWithStruct(t *testing.T) {
 
 	s := Struct{V1: T1{1, "1", []int{1}}, V2: 2, V3: T1{3, "3", []int{3}}}
 	buf := new(bytes.Buffer)
-	enc := NewEncoder(buf)
+	enc := tb.NewEncoder(buf)
 	err := enc.Encode(&s)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
 
 	v := Struct{}
-	dec := NewDecoder(buf)
+	dec := tb.NewDecoder(buf)
 	err = dec.Decode(&v)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
@@ -232,6 +238,7 @@ func TestStructWithStruct(t *testing.T) {
 }
 
 func TestStructWithEmbeddedStruct(t *testing.T) {
+	tb := New()
 	type T1 struct {
 		ID    uint64
 		Name  string
@@ -246,14 +253,14 @@ func TestStructWithEmbeddedStruct(t *testing.T) {
 
 	s := Struct{T1: T1{1, "1", []int{1}}, V2: 2, V3: T1{3, "3", []int{3}}}
 	buf := new(bytes.Buffer)
-	enc := NewEncoder(buf)
+	enc := tb.NewEncoder(buf)
 	err := enc.Encode(&s)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
 
 	v := Struct{}
-	dec := NewDecoder(buf)
+	dec := tb.NewDecoder(buf)
 	err = dec.Decode(&v)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
@@ -266,6 +273,7 @@ func TestStructWithEmbeddedStruct(t *testing.T) {
 }
 
 func TestArrayOfStructWithStruct(t *testing.T) {
+	tb := New()
 	type T1 struct {
 		ID    uint64
 		Name  string
@@ -282,14 +290,14 @@ func TestArrayOfStructWithStruct(t *testing.T) {
 		{V1: T1{1, "1", []int{1}}, V2: 2, V3: T1{3, "3", []int{3}}},
 	}
 	buf := new(bytes.Buffer)
-	enc := NewEncoder(buf)
+	enc := tb.NewEncoder(buf)
 	err := enc.Encode(&s)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
 
 	v := [1]Struct{}
-	dec := NewDecoder(buf)
+	dec := tb.NewDecoder(buf)
 	err = dec.Decode(&v)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
@@ -302,6 +310,7 @@ func TestArrayOfStructWithStruct(t *testing.T) {
 }
 
 func TestSliceOfStructWithStruct(t *testing.T) {
+	tb := New()
 	type T1 struct {
 		ID    uint64
 		Name  string
@@ -318,14 +327,14 @@ func TestSliceOfStructWithStruct(t *testing.T) {
 		{V1: T1{1, "1", []int{1}}, V2: 2, V3: T1{3, "3", []int{3}}},
 	}
 	buf := new(bytes.Buffer)
-	enc := NewEncoder(buf)
+	enc := tb.NewEncoder(buf)
 	err := enc.Encode(&s)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
 
 	v := []Struct{}
-	dec := NewDecoder(buf)
+	dec := tb.NewDecoder(buf)
 	err = dec.Decode(&v)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
@@ -338,6 +347,7 @@ func TestSliceOfStructWithStruct(t *testing.T) {
 }
 
 func TestBasicTypePointers(t *testing.T) {
+	tb := New()
 	type BT struct {
 		B    *bool
 		S    *string
@@ -432,13 +442,13 @@ func TestBasicTypePointers(t *testing.T) {
 		for i := 0; i < 10; i += 1 {
 			btOrig := &BT{}
 			fuzz(btOrig, nilChance)
-			payload, err := Encode(btOrig)
+			payload, err := tb.Encode(btOrig)
 			if err != nil {
 				t.Errorf("marshalling failed basic type struct for: %+v, err=%+v", btOrig, err)
 				continue
 			}
 			btDecoded := &BT{}
-			err = Decode(payload, btDecoded)
+			err = tb.Decode(payload, btDecoded)
 			if err != nil {
 				t.Errorf("unmarshalling failed for: %+v, err=%+v", btOrig, err)
 				continue
@@ -448,6 +458,7 @@ func TestBasicTypePointers(t *testing.T) {
 }
 
 func TestPointerOfPointer(t *testing.T) {
+	tb := New()
 	type S struct {
 		V **int
 	}
@@ -457,13 +468,13 @@ func TestPointerOfPointer(t *testing.T) {
 	sOrig := &S{
 		V: ppi,
 	}
-	payload, err := Encode(sOrig)
+	payload, err := tb.Encode(sOrig)
 	if err != nil {
 		t.Errorf("marshalling failed pointer of pointer type for: %+v, err=%+v", sOrig, err)
 		return
 	}
 	sDecoded := &S{}
-	err = Decode(payload, sDecoded)
+	err = tb.Decode(payload, sDecoded)
 	if err != nil {
 		t.Errorf("unmarshalling failed pointer of pointer type for: %+v, err=%+v", sOrig, err)
 		return
@@ -484,6 +495,7 @@ func TestPointerOfPointer(t *testing.T) {
 }
 
 func TestStructPointer(t *testing.T) {
+	tb := New()
 	type T struct {
 		V int
 	}
@@ -495,13 +507,13 @@ func TestStructPointer(t *testing.T) {
 			V: rand.Int(),
 		},
 	}
-	payload, err := Encode(sOrig)
+	payload, err := tb.Encode(sOrig)
 	if err != nil {
 		t.Errorf("marshalling failed for struct containing pointer of another struct: %+v, err=%+v", sOrig, err)
 		return
 	}
 	sDecoded := &S{}
-	err = Decode(payload, sDecoded)
+	err = tb.Decode(payload, sDecoded)
 	if err != nil {
 		t.Errorf("unmarshalling failed for struct containing pointer of another struct: %+v, err=%+v", sOrig, err)
 		return
@@ -519,16 +531,17 @@ func TestStructPointer(t *testing.T) {
 }
 
 func TestEncodeNonPointer(t *testing.T) {
+	tb := New()
 	type S struct {
 		A int
 	}
 	s := S{A: 1}
-	data, err := Encode(s)
+	data, err := tb.Encode(s)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var res S
-	if err := Decode(data, &res); err != nil {
+	if err := tb.Decode(data, &res); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(res, s) {
@@ -537,31 +550,33 @@ func TestEncodeNonPointer(t *testing.T) {
 }
 
 func Test_Float32(t *testing.T) {
+	tb := New()
 	v := float32(1.15)
 
-	b, err := Encode(&v)
+	b, err := tb.Encode(&v)
 	assertNoError(t, err)
 	if b == nil {
 		t.Error("Expected non-nil value")
 	}
 
 	var o float32
-	err = Decode(b, &o)
+	err = tb.Decode(b, &o)
 	assertNoError(t, err)
 	assertEqual(t, v, o)
 }
 
 func Test_Float64(t *testing.T) {
+	tb := New()
 	v := float64(1.15)
 
-	b, err := Encode(&v)
+	b, err := tb.Encode(&v)
 	assertNoError(t, err)
 	if b == nil {
 		t.Error("Expected non-nil value")
 	}
 
 	var o float64
-	err = Decode(b, &o)
+	err = tb.Decode(b, &o)
 	assertNoError(t, err)
 	assertEqual(t, v, o)
 }
@@ -569,19 +584,20 @@ func Test_Float64(t *testing.T) {
 // TestSliceOfPtrs temporarily commented out due to type conversion issues
 // TODO: Re-enable when convertTinyReflectToReflectType is fully implemented
 func TestSliceOfPtrs(t *testing.T) {
+	tb := New()
 	type A struct {
 		V int64
 	}
 
 	v := []*A{{1}, nil, {2}}
-	b, err := Encode(v)
+	b, err := tb.Encode(v)
 	assertNoError(t, err)
 	if b == nil {
 		t.Error("Expected non-nil value")
 	}
 
 	var o []*A
-	err = Decode(b, &o)
+	err = tb.Decode(b, &o)
 	assertNoError(t, err)
 	assertEqual(t, v, o)
 }
@@ -596,7 +612,7 @@ func TestSliceOfPtrs(t *testing.T) {
 //
 // 	x := time.Unix(1637686933, 0)
 // 	v := []*A{{&x, nil, x}}
-// 	b, err := Encode(v)
+// 	b, err := tb.Encode(v)
 // 	assertNoError(t, err)
 // 	if b == nil {
 // 		t.Error("Expected non-nil value")

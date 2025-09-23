@@ -22,11 +22,11 @@ func TestElementCodecFlow(t *testing.T) {
 	t.Logf("Slice type: %p, kind: %s, length: %d", rv.Type(), rv.Type().Kind().String(), mustGetLen(rv))
 
 	// Step 2: Get the slice codec
-	sliceCodec, err := scanType(rv.Type())
+	sliceCodec, err := ScanType(rv.Type())
 	if err != nil {
 		t.Fatalf("Failed to scan slice type: %v", err)
 	}
-	
+
 	reflectSliceCodec, ok := sliceCodec.(*reflectSliceCodec)
 	if !ok {
 		t.Fatalf("Expected reflectSliceCodec, got %T", sliceCodec)
@@ -43,24 +43,24 @@ func TestElementCodecFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to index element 0: %v", err)
 		}
-		
+
 		t.Logf("Element type: %p, kind: %s", elem.Type(), elem.Type().Kind().String())
-		
+
 		// Verify element type matches what elemCodec expects
 		if elem.Type().Kind().String() != "struct" {
 			t.Errorf("Expected struct element, got %s", elem.Type().Kind().String())
 		}
 
 		// Test that we can scan the element type independently
-		elemTypeCodec, err := scanType(elem.Type())
+		elemTypeCodec, err := ScanType(elem.Type())
 		if err != nil {
 			t.Fatalf("Failed to scan element type: %v", err)
 		}
 		t.Logf("Element type codec: %T", elemTypeCodec)
-		
+
 		// Verify codec types match
 		if elemCodecType := getCodecTypeName(elemCodec); elemCodecType != getCodecTypeName(elemTypeCodec) {
-			t.Errorf("Codec type mismatch: slice elemCodec=%s, direct scan=%s", 
+			t.Errorf("Codec type mismatch: slice elemCodec=%s, direct scan=%s",
 				elemCodecType, getCodecTypeName(elemTypeCodec))
 		}
 	}

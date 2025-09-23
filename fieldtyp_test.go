@@ -44,12 +44,12 @@ func TestFieldTypNil(t *testing.T) {
 		} else {
 			t.Logf("✅ Field %d (%s) has Typ: %p, Kind: %v", i, field.Name, field.Typ, field.Typ.Kind())
 
-			// Test scanType on this field
-			codec, err := scanType(field.Typ)
+			// Test ScanType on this field
+			codec, err := ScanType(field.Typ)
 			if err != nil {
-				t.Errorf("❌ scanType failed for field %d (%s): %v", i, field.Name, err)
+				t.Errorf("❌ ScanType failed for field %d (%s): %v", i, field.Name, err)
 			} else {
-				t.Logf("✅ scanType succeeded for field %d (%s): %T", i, field.Name, codec)
+				t.Logf("✅ ScanType succeeded for field %d (%s): %T", i, field.Name, codec)
 			}
 		}
 	}

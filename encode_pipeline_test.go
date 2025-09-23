@@ -31,11 +31,10 @@ func TestEncodePipelineSteps(t *testing.T) {
 		t.Fatal("typ is nil!")
 	}
 
-	// Step 2: scanToCache (like in Encode)
-	schemas := make(map[*tinyreflect.Type]Codec)
-	c, err := scanToCache(typ, schemas)
+	// Step 2: ScanType (like in Encode)
+	c, err := ScanType(typ)
 	if err != nil {
-		t.Fatalf("scanToCache failed: %v", err)
+		t.Fatalf("ScanType failed: %v", err)
 	}
 	t.Logf("Step 2 - codec type: %T", c)
 

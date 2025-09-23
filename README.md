@@ -61,15 +61,16 @@ type User struct {
 }
 
 // Encode to binary
+tb := tinybin.New()
 user := User{Name: "Alice", Age: 30, Active: true}
-data, err := tinybin.Encode(user)
+data, err := tb.Encode(user)
 if err != nil {
     // handle error
 }
 
 // Decode from binary
 var user2 User
-err = tinybin.Decode(data, &user2)
+err = tb.Decode(data, &user2)
 if err != nil {
     // handle error
 }
@@ -79,18 +80,19 @@ if err != nil {
 
 ### Primary Functions
 
-#### `Encode(v interface{}) ([]byte, error)`
+#### `(*TinyBin) Encode(v interface{}) ([]byte, error)`
 Encodes any supported value into binary format.
 
 ```go
-data, err := tinybin.Encode(myStruct)
+tb := tinybin.New()
+data, err := tb.Encode(myStruct)
 ```
 
-#### `Decode(b []byte, v interface{}) error`
+#### `(*TinyBin) Decode(b []byte, v interface{}) error`
 Decodes binary data into a pointer to a value.
 
 ```go
-err := tinybin.Decode(data, &myStruct)
+err := tb.Decode(data, &myStruct)
 ```
 
 ### Encoder Type
@@ -183,9 +185,10 @@ TinyBin uses sync.Pool for encoder/decoder reuse, eliminating allocation overhea
 
 ```go
 // Encoders and decoders are automatically pooled
+tb := tinybin.New()
 for i := 0; i < 1000; i++ {
-    data, _ := tinybin.Encode(myData)  // Uses pooled encoder
-    tinybin.Decode(data, &result)      // Uses pooled decoder
+    data, _ := tb.Encode(myData)  // Uses pooled encoder
+    tb.Decode(data, &result)      // Uses pooled decoder
 }
 ```
 
@@ -271,11 +274,14 @@ import "encoding/binary"
 // New way - minimal, WebAssembly optimized
 import "github.com/cdvelop/tinybin"
 
+// Create TinyBin instance
+tb := tinybin.New()
+
 // Encode with automatic type detection
-data, err := tinybin.Encode(myStruct)
+data, err := tb.Encode(myStruct)
 
 // Decode with type safety
-err = tinybin.Decode(data, &myStruct)
+err = tb.Decode(data, &myStruct)
 ```
 
 ### Performance Comparison
@@ -287,38 +293,41 @@ err = tinybin.Decode(data, &myStruct)
 ## Best Practices
 
 ### 1. Use Pointers for Unmarshaling
-Always pass pointers to Unmarshal:
+Always pass pointers to Decode:
 
 ```go
 // ✅ Correct
+tb := tinybin.New()
 var result MyStruct
-err := tinybin.Unmarshal(data, &result)
+err := tb.Decode(data, &result)
 
 // ❌ Incorrect - will not work
 var result MyStruct
-err := tinybin.Unmarshal(data, result)
+err := tb.Decode(data, result)
 ```
 
-### 2. Reuse Encoders/Decoders
+### 2. Reuse TinyBin Instances
 For high-performance scenarios:
 
 ```go
 // ✅ Efficient - uses pooling
+tb := tinybin.New()
 for i := range items {
-    data, _ := tinybin.Encode(items[i])
+    data, _ := tb.Encode(items[i])
     // process data
 }
 
 // ❌ Inefficient - creates new instances each time
 for i := range items {
-    encoder := tinybin.NewEncoder(&buffer)
-    encoder.Encode(items[i])
+    tb := tinybin.New()
+    tb.Encode(items[i])
 }
 ```
 
 ### 3. Handle Errors Appropriately
 ```go
-data, err := tinybin.Encode(myData)
+tb := tinybin.New()
+data, err := tb.Encode(myData)
 if err != nil {
     // Log error with context
     log.Printf("Failed to encode data: %v", err)

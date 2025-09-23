@@ -22,11 +22,11 @@ func TestScanTypeStructFields(t *testing.T) {
 		t.Fatal("typ is nil")
 	}
 
-	// Test scanType for the struct itself
-	t.Logf("Testing scanType for struct type")
-	codec, err := scanType(typ)
+	// Test ScanType for the struct itself
+	t.Logf("Testing ScanType for struct type")
+	codec, err := ScanType(typ)
 	if err != nil {
-		t.Fatalf("scanType failed for struct: %v", err)
+		t.Fatalf("ScanType failed for struct: %v", err)
 	}
 
 	// Verify we get a struct codec
@@ -53,10 +53,10 @@ func TestScanTypeStructFields(t *testing.T) {
 
 		t.Logf("Testing Field %d: %s (Type: %v)", i, fieldName, fieldTyp.Kind())
 
-		// This tests the scanType function for different field types
-		fieldCodec, err := scanType(fieldTyp)
+		// This tests the ScanType function for different field types
+		fieldCodec, err := ScanType(fieldTyp)
 		if err != nil {
-			t.Fatalf("scanType failed for field %s: %v", fieldName, err)
+			t.Fatalf("ScanType failed for field %s: %v", fieldName, err)
 		}
 
 		// Just verify we got a non-nil codec

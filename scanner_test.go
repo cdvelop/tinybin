@@ -16,7 +16,7 @@ func (s *testCustom) GetBinaryCodec() Codec {
 
 func TestScanner(t *testing.T) {
 	rt := tinyreflect.Indirect(tinyreflect.ValueOf(s0v)).Type()
-	codec, err := scanType(rt)
+	codec, err := ScanType(rt)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestScanner(t *testing.T) {
 func TestScanner_Custom(t *testing.T) {
 	v := testCustom("test")
 	rt := tinyreflect.Indirect(tinyreflect.ValueOf(v)).Type()
-	codec, err := scanType(rt)
+	codec, err := ScanType(rt)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

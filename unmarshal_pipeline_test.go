@@ -11,6 +11,7 @@ import (
 // TestDecodePipeline verifies the complete unmarshal pipeline for struct pointers
 // This test covers the step-by-step process that unmarshal follows internally
 func TestDecodePipeline(t *testing.T) {
+	tb := New()
 	type InnerStruct struct {
 		V int
 		S string
@@ -28,7 +29,7 @@ func TestDecodePipeline(t *testing.T) {
 		}
 
 		// Step 1: Encode
-		payload, err := Encode(original)
+		payload, err := tb.Encode(original)
 		if err != nil {
 			t.Fatalf("Encode failed: %v", err)
 		}
@@ -57,11 +58,11 @@ func TestDecodePipeline(t *testing.T) {
 			t.Errorf("Expected struct after Indirect, got kind %v", indirect.Kind())
 		}
 
-		// Step 4: Test codec resolution (scanType functionality)
+		// Step 4: Test codec resolution (ScanType functionality)
 		typ := indirect.Type()
-		structCodec, err := scanType(typ)
+		structCodec, err := ScanType(typ)
 		if err != nil {
-			t.Fatalf("scanType failed: %v", err)
+			t.Fatalf("ScanType failed: %v", err)
 		}
 		if structCodec == nil {
 			t.Fatal("scanType returned nil codec")
@@ -97,13 +98,13 @@ func TestDecodePipeline(t *testing.T) {
 		}
 
 		// Full roundtrip test
-		payload, err := Encode(original)
+		payload, err := tb.Encode(original)
 		if err != nil {
 			t.Fatalf("Encode failed: %v", err)
 		}
 
 		decoded := &OuterStruct{}
-		err = Decode(payload, decoded)
+		err = tb.Decode(payload, decoded)
 		if err != nil {
 			t.Fatalf("Decode failed: %v", err)
 		}

@@ -7,6 +7,7 @@ import (
 )
 
 func TestDecodeFlow(t *testing.T) {
+	tb := New()
 	// Test the complete marshal/unmarshal flow with validation
 	original := &simpleStruct{
 		Name:      "Roman",
@@ -16,7 +17,7 @@ func TestDecodeFlow(t *testing.T) {
 	}
 
 	// Encode
-	b, err := Encode(original)
+	b, err := tb.Encode(original)
 	if err != nil {
 		t.Fatalf("Encode failed: %v", err)
 	}
@@ -37,15 +38,15 @@ func TestDecodeFlow(t *testing.T) {
 	}
 	t.Logf("Type: %p, Kind: %v", typ, typ.Kind())
 
-	// Test scanType directly to ensure codec creation works
-	codec, err := scanType(typ)
+	// Test ScanType directly to ensure codec creation works
+	codec, err := ScanType(typ)
 	if err != nil {
-		t.Fatalf("scanType failed: %v", err)
+		t.Fatalf("ScanType failed: %v", err)
 	}
-	t.Logf("scanType succeeded: %T", codec)
+	t.Logf("ScanType succeeded: %T", codec)
 
 	// Now test the actual unmarshal
-	err = Decode(b, decoded)
+	err = tb.Decode(b, decoded)
 	if err != nil {
 		t.Fatalf("Decode failed: %v", err)
 	}

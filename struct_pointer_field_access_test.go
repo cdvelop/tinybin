@@ -10,6 +10,7 @@ import (
 // TestStructPointerFieldAccess verifies that struct fields containing pointers
 // can be properly accessed and marshaled/unmarshaled through tinyreflect
 func TestStructPointerFieldAccess(t *testing.T) {
+	tb := New()
 	type InnerStruct struct {
 		V int
 	}
@@ -43,13 +44,13 @@ func TestStructPointerFieldAccess(t *testing.T) {
 		}
 		
 		// Verify marshal/unmarshal roundtrip
-		payload, err := Encode(original)
+		payload, err := tb.Encode(original)
 		if err != nil {
 			t.Fatalf("Encode failed: %v", err)
 		}
-		
+
 		decoded := &OuterStruct{}
-		err = Decode(payload, decoded)
+		err = tb.Decode(payload, decoded)
 		if err != nil {
 			t.Fatalf("Decode failed: %v", err)
 		}
@@ -63,17 +64,17 @@ func TestStructPointerFieldAccess(t *testing.T) {
 		}
 	})
 	
-	// Test case 2: Nil pointer  
+	// Test case 2: Nil pointer
 	t.Run("NilPointer", func(t *testing.T) {
 		original := &OuterStruct{Ptr: nil}
-		
-		payload, err := Encode(original)
+
+		payload, err := tb.Encode(original)
 		if err != nil {
 			t.Fatalf("Encode failed: %v", err)
 		}
-		
+
 		decoded := &OuterStruct{}
-		err = Decode(payload, decoded)
+		err = tb.Decode(payload, decoded)
 		if err != nil {
 			t.Fatalf("Decode failed: %v", err)
 		}

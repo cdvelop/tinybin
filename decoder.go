@@ -3,34 +3,16 @@ package tinybin
 import (
 	"io"
 	"math"
-	"sync"
 
 	"github.com/cdvelop/tinyreflect"
 	. "github.com/cdvelop/tinystring"
 )
 
-// Reusable long-lived decoder pool.
-var decoders = &sync.Pool{New: func() interface{} {
-	return NewDecoder(newReader(nil))
-}}
-
-// Decode decodes the payload from the binary format.
-func Decode(b []byte, v interface{}) (err error) {
-
-	// Get the decoder from the pool, reset it
-	d := decoders.Get().(*Decoder)
-	d.reader.(*sliceReader).Reset(b) // Reset the reader
-
-	// Decode and set the buffer if successful and free the decoder
-	err = d.Decode(v)
-	decoders.Put(d)
-	return
-}
-
 // Decoder represents a binary decoder.
 type Decoder struct {
 	reader  reader
 	schemas map[*tinyreflect.Type]Codec
+	tinyBin *TinyBin // Reference to the TinyBin instance
 }
 
 // NewDecoder creates a binary decoder.
@@ -39,6 +21,11 @@ func NewDecoder(r io.Reader) *Decoder {
 		reader:  newReader(r),
 		schemas: make(map[*tinyreflect.Type]Codec),
 	}
+}
+
+// scanToCache escanea el tipo y lo cachea usando la instancia de TinyBin.
+func (d *Decoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
+	return d.tinyBin.scanToCache(t, d.schemas)
 }
 
 // Decode decodes a value by reading from the underlying io.Reader.
@@ -51,7 +38,7 @@ func (d *Decoder) Decode(v interface{}) (err error) {
 
 	// Scan the type (this will load from cache)
 	var c Codec
-	if c, err = scanToCache(rv.Type(), d.schemas); err == nil {
+	if c, err = d.scanToCache(rv.Type()); err == nil {
 		err = c.DecodeTo(d, rv)
 	}
 

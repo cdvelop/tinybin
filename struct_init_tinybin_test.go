@@ -58,15 +58,15 @@ func TestStructFieldTypInitializationInTinybin(t *testing.T) {
 		}
 		t.Logf("Field(%d) via method: Name=%s, Typ=%p", i, field.Name, field.Typ)
 
-		// Test scanType on each field
+		// Test ScanType on each field
 		if field.Typ == nil {
 			t.Errorf("❌ Field %d (%s) has nil Typ!", i, field.Name)
 		} else {
-			codec, err := scanType(field.Typ)
+			codec, err := ScanType(field.Typ)
 			if err != nil {
-				t.Errorf("❌ scanType failed for field %d (%s): %v", i, field.Name, err)
+				t.Errorf("❌ ScanType failed for field %d (%s): %v", i, field.Name, err)
 			} else {
-				t.Logf("✅ scanType succeeded for field %d (%s): %T", i, field.Name, codec)
+				t.Logf("✅ ScanType succeeded for field %d (%s): %T", i, field.Name, codec)
 			}
 		}
 	}
