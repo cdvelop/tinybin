@@ -8,9 +8,9 @@ import (
 	. "github.com/cdvelop/tinystring"
 )
 
-// TestUnmarshalPipeline verifies the complete unmarshal pipeline for struct pointers
+// TestDecodePipeline verifies the complete unmarshal pipeline for struct pointers
 // This test covers the step-by-step process that unmarshal follows internally
-func TestUnmarshalPipeline(t *testing.T) {
+func TestDecodePipeline(t *testing.T) {
 	type InnerStruct struct {
 		V int
 		S string
@@ -20,20 +20,20 @@ func TestUnmarshalPipeline(t *testing.T) {
 		Name  string
 	}
 
-	t.Run("CompleteUnmarshalFlow", func(t *testing.T) {
+	t.Run("CompleteDecodeFlow", func(t *testing.T) {
 		// Test data with non-nil pointer
 		original := &OuterStruct{
 			Inner: &InnerStruct{V: 42, S: "test"},
 			Name:  "outer",
 		}
 
-		// Step 1: Marshal
-		payload, err := Marshal(original)
+		// Step 1: Encode
+		payload, err := Encode(original)
 		if err != nil {
-			t.Fatalf("Marshal failed: %v", err)
+			t.Fatalf("Encode failed: %v", err)
 		}
 		if len(payload) == 0 {
-			t.Fatal("Marshal produced empty payload")
+			t.Fatal("Encode produced empty payload")
 		}
 
 		// Step 2: Verify unmarshal pipeline components
@@ -97,15 +97,15 @@ func TestUnmarshalPipeline(t *testing.T) {
 		}
 
 		// Full roundtrip test
-		payload, err := Marshal(original)
+		payload, err := Encode(original)
 		if err != nil {
-			t.Fatalf("Marshal failed: %v", err)
+			t.Fatalf("Encode failed: %v", err)
 		}
 
 		decoded := &OuterStruct{}
-		err = Unmarshal(payload, decoded)
+		err = Decode(payload, decoded)
 		if err != nil {
-			t.Fatalf("Unmarshal failed: %v", err)
+			t.Fatalf("Decode failed: %v", err)
 		}
 
 		// Verify nil pointer is preserved

@@ -34,12 +34,12 @@ var (
 //
 // 	output := []byte{0x1, 0xf, 0x1, 0x0, 0x0, 0x0, 0xe, 0xc8, 0x75, 0x9a, 0xa5, 0x0, 0x0, 0x0, 0x6, 0xff, 0xff}
 //
-// 	b, err := Marshal(&input)
+// 	b, err := Encode(&input)
 // 	assertNoError(t, err)
 // 	assertEqualBytes(t, output, b)
 //
 // 	var v []time.Time
-// 	err = Unmarshal(b, &v)
+// 	err = Decode(b, &v)
 //
 // 	assertNoError(t, err)
 // 	assertEqual(t, input, v)
@@ -64,12 +64,12 @@ func TestBinaryEncode_EOF(t *testing.T) {
 	}
 	output := []byte{0x0}
 
-	b, err := Marshal(v)
+	b, err := Encode(v)
 	assertNoError(t, err)
 	assertEqualBytes(t, output, b)
 
 	s := &sliceStruct{}
-	err = Unmarshal(b, s)
+	err = Decode(b, s)
 	assertNoError(t, err)
 	assertEqual(t, v, s)
 }
@@ -82,13 +82,13 @@ func TestBinaryEncodeSimpleStruct(t *testing.T) {
 		Ssid:      []uint32{1, 2, 3},
 	}
 
-	b, err := Marshal(v)
+	b, err := Encode(v)
 	assertNoError(t, err)
 	// For now, let's see what actual output we get
 	t.Logf("Actual output: %v", b)
 
 	s := &simpleStruct{}
-	err = Unmarshal(b, s)
+	err = Decode(b, s)
 	assertNoError(t, err)
 	assertEqual(t, v, s)
 }
@@ -106,10 +106,10 @@ func TestBinarySimpleStructSlice(t *testing.T) {
 		Ssid:      []uint32{1, 2, 3},
 	}}
 
-	b, err := Marshal(&input)
+	b, err := Encode(&input)
 
 	var v []simpleStruct
-	err = Unmarshal(b, &v)
+	err = Decode(b, &v)
 
 	assertNoError(t, err)
 	assertEqual(t, input, v)
@@ -147,12 +147,12 @@ func TestBinarySimpleStructSlice(t *testing.T) {
 // )
 
 // func TestBinaryEncodeComplex(t *testing.T) {
-// 	b, err := Marshal(s1v)
+// 	b, err := Encode(s1v)
 // 	assertNoError(t, err)
 // 	assertEqual(t, svb, b)
 //
 // 	s := &s1{}
-// 	err = Unmarshal(b, s)
+// 	err = Decode(b, s)
 // 	assertNoError(t, err)
 // 	assertEqual(t, s1v, s)
 // }
@@ -169,7 +169,7 @@ func (e *errString) Error() string { return e.s }
 
 var errExpectedLen1 = newError("expected data to be length 1")
 
-func (s *s2) UnmarshalBinary(data []byte) error {
+func (s *s2) DecodeBinary(data []byte) error {
 	if len(data) != 1 {
 		return errExpectedLen1
 	}
@@ -178,21 +178,21 @@ func (s *s2) UnmarshalBinary(data []byte) error {
 
 }
 
-func (s *s2) MarshalBinary() (data []byte, err error) {
+func (s *s2) EncodeBinary() (data []byte, err error) {
 	return s.b, nil
 }
 
-func TestBinaryMarshalUnMarshaler(t *testing.T) {
+func TestBinaryEncodeUnEncodeer(t *testing.T) {
 	s2v := &s2{[]byte{0x13}}
-	b, err := Marshal(s2v)
+	b, err := Encode(s2v)
 	assertNoError(t, err)
 	assertEqualBytes(t, []byte{0x1, 0x13}, b)
 }
 
-func TestMarshalUnMarshalTypeAliases(t *testing.T) {
+func TestEncodeUnEncodeTypeAliases(t *testing.T) {
 	type Foo int64
 	f := Foo(32)
-	b, err := Marshal(f)
+	b, err := Encode(f)
 	assertNoError(t, err)
 	assertEqual(t, []byte{0x40}, b)
 }
@@ -432,13 +432,13 @@ func TestBasicTypePointers(t *testing.T) {
 		for i := 0; i < 10; i += 1 {
 			btOrig := &BT{}
 			fuzz(btOrig, nilChance)
-			payload, err := Marshal(btOrig)
+			payload, err := Encode(btOrig)
 			if err != nil {
 				t.Errorf("marshalling failed basic type struct for: %+v, err=%+v", btOrig, err)
 				continue
 			}
 			btDecoded := &BT{}
-			err = Unmarshal(payload, btDecoded)
+			err = Decode(payload, btDecoded)
 			if err != nil {
 				t.Errorf("unmarshalling failed for: %+v, err=%+v", btOrig, err)
 				continue
@@ -457,13 +457,13 @@ func TestPointerOfPointer(t *testing.T) {
 	sOrig := &S{
 		V: ppi,
 	}
-	payload, err := Marshal(sOrig)
+	payload, err := Encode(sOrig)
 	if err != nil {
 		t.Errorf("marshalling failed pointer of pointer type for: %+v, err=%+v", sOrig, err)
 		return
 	}
 	sDecoded := &S{}
-	err = Unmarshal(payload, sDecoded)
+	err = Decode(payload, sDecoded)
 	if err != nil {
 		t.Errorf("unmarshalling failed pointer of pointer type for: %+v, err=%+v", sOrig, err)
 		return
@@ -495,13 +495,13 @@ func TestStructPointer(t *testing.T) {
 			V: rand.Int(),
 		},
 	}
-	payload, err := Marshal(sOrig)
+	payload, err := Encode(sOrig)
 	if err != nil {
 		t.Errorf("marshalling failed for struct containing pointer of another struct: %+v, err=%+v", sOrig, err)
 		return
 	}
 	sDecoded := &S{}
-	err = Unmarshal(payload, sDecoded)
+	err = Decode(payload, sDecoded)
 	if err != nil {
 		t.Errorf("unmarshalling failed for struct containing pointer of another struct: %+v, err=%+v", sOrig, err)
 		return
@@ -518,17 +518,17 @@ func TestStructPointer(t *testing.T) {
 	}
 }
 
-func TestMarshalNonPointer(t *testing.T) {
+func TestEncodeNonPointer(t *testing.T) {
 	type S struct {
 		A int
 	}
 	s := S{A: 1}
-	data, err := Marshal(s)
+	data, err := Encode(s)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var res S
-	if err := Unmarshal(data, &res); err != nil {
+	if err := Decode(data, &res); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(res, s) {
@@ -539,14 +539,14 @@ func TestMarshalNonPointer(t *testing.T) {
 func Test_Float32(t *testing.T) {
 	v := float32(1.15)
 
-	b, err := Marshal(&v)
+	b, err := Encode(&v)
 	assertNoError(t, err)
 	if b == nil {
 		t.Error("Expected non-nil value")
 	}
 
 	var o float32
-	err = Unmarshal(b, &o)
+	err = Decode(b, &o)
 	assertNoError(t, err)
 	assertEqual(t, v, o)
 }
@@ -554,14 +554,14 @@ func Test_Float32(t *testing.T) {
 func Test_Float64(t *testing.T) {
 	v := float64(1.15)
 
-	b, err := Marshal(&v)
+	b, err := Encode(&v)
 	assertNoError(t, err)
 	if b == nil {
 		t.Error("Expected non-nil value")
 	}
 
 	var o float64
-	err = Unmarshal(b, &o)
+	err = Decode(b, &o)
 	assertNoError(t, err)
 	assertEqual(t, v, o)
 }
@@ -574,14 +574,14 @@ func TestSliceOfPtrs(t *testing.T) {
 	}
 
 	v := []*A{{1}, nil, {2}}
-	b, err := Marshal(v)
+	b, err := Encode(v)
 	assertNoError(t, err)
 	if b == nil {
 		t.Error("Expected non-nil value")
 	}
 
 	var o []*A
-	err = Unmarshal(b, &o)
+	err = Decode(b, &o)
 	assertNoError(t, err)
 	assertEqual(t, v, o)
 }
@@ -596,14 +596,14 @@ func TestSliceOfPtrs(t *testing.T) {
 //
 // 	x := time.Unix(1637686933, 0)
 // 	v := []*A{{&x, nil, x}}
-// 	b, err := Marshal(v)
+// 	b, err := Encode(v)
 // 	assertNoError(t, err)
 // 	if b == nil {
 // 		t.Error("Expected non-nil value")
 // 	}
 //
 // 	var o []*A
-// 	err = Unmarshal(b, &o)
+// 	err = Decode(b, &o)
 // 	assertNoError(t, err)
 // 	assertEqual(t, v, o)
 // }
@@ -611,14 +611,14 @@ func TestSliceOfPtrs(t *testing.T) {
 // TestEncodeBigStruct commented out since it uses bigStruct which contains maps and time.Time
 // func TestEncodeBigStruct(t *testing.T) {
 // 	input := newBigStruct()
-// 	b, err := Marshal(input)
+// 	b, err := Encode(input)
 // 	if err != nil {
-// 		t.Fatalf("Marshal error: %v", err)
+// 		t.Fatalf("Encode error: %v", err)
 // 	}
 //
 // 	var output bigStruct
-// 	if err := Unmarshal(b, &output); err != nil {
-// 		t.Fatalf("Unmarshal error: %v", err)
+// 	if err := Decode(b, &output); err != nil {
+// 		t.Fatalf("Decode error: %v", err)
 // 	}
 // 	if !reflect.DeepEqual(input, &output) {
 // 		t.Errorf("Expected %v, got %v", input, &output)

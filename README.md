@@ -60,16 +60,16 @@ type User struct {
     Active bool
 }
 
-// Marshal to binary
+// Encode to binary
 user := User{Name: "Alice", Age: 30, Active: true}
-data, err := tinybin.Marshal(user)
+data, err := tinybin.Encode(user)
 if err != nil {
     // handle error
 }
 
-// Unmarshal from binary
+// Decode from binary
 var user2 User
-err = tinybin.Unmarshal(data, &user2)
+err = tinybin.Decode(data, &user2)
 if err != nil {
     // handle error
 }
@@ -79,26 +79,18 @@ if err != nil {
 
 ### Primary Functions
 
-#### `Marshal(v interface{}) ([]byte, error)`
+#### `Encode(v interface{}) ([]byte, error)`
 Encodes any supported value into binary format.
 
 ```go
-data, err := tinybin.Marshal(myStruct)
+data, err := tinybin.Encode(myStruct)
 ```
 
-#### `Unmarshal(b []byte, v interface{}) error`
+#### `Decode(b []byte, v interface{}) error`
 Decodes binary data into a pointer to a value.
 
 ```go
-err := tinybin.Unmarshal(data, &myStruct)
-```
-
-#### `MarshalTo(v interface{}, dst io.Writer) error`
-Encodes a value directly to an io.Writer.
-
-```go
-var buf bytes.Buffer
-err := tinybin.MarshalTo(myStruct, &buf)
+err := tinybin.Decode(data, &myStruct)
 ```
 
 ### Encoder Type
@@ -115,6 +107,13 @@ Encodes a value using the encoder.
 
 ```go
 err := encoder.Encode(myStruct)
+```
+
+#### `(*Encoder) Reset(out io.Writer)`
+Resets the encoder to write to a new output.
+
+```go
+encoder.Reset(newBuffer)
 ```
 
 #### `(*Encoder) Reset(out io.Writer)`
@@ -164,6 +163,19 @@ err := decoder.Decode(&myStruct)
 - `(*Decoder) ReadBool() (bool, error)` - Read boolean value
 - `(*Decoder) Slice(n int) ([]byte, error)` - Get slice of next n bytes
 
+#### Reading Methods
+- `(*Decoder) Read(p []byte) (int, error)` - Read raw bytes
+- `(*Decoder) ReadString() (string, error)` - Read a length-prefixed string
+- `(*Decoder) ReadVarint() (int64, error)` - Read variable-length integer
+- `(*Decoder) ReadUvarint() (uint64, error)` - Read variable-length unsigned integer
+- `(*Decoder) ReadUint16() (uint16, error)` - Read 16-bit unsigned integer
+- `(*Decoder) ReadUint32() (uint32, error)` - Read 32-bit unsigned integer
+- `(*Decoder) ReadUint64() (uint64, error)` - Read 64-bit unsigned integer
+- `(*Decoder) ReadFloat32() (float32, error)` - Read 32-bit float
+- `(*Decoder) ReadFloat64() (float64, error)` - Read 64-bit float
+- `(*Decoder) ReadBool() (bool, error)` - Read boolean value
+- `(*Decoder) Slice(n int) ([]byte, error)` - Get slice of next n bytes
+
 ## Performance Features
 
 ### Pool-Based Reuse
@@ -172,8 +184,8 @@ TinyBin uses sync.Pool for encoder/decoder reuse, eliminating allocation overhea
 ```go
 // Encoders and decoders are automatically pooled
 for i := 0; i < 1000; i++ {
-    data, _ := tinybin.Marshal(myData)  // Uses pooled encoder
-    tinybin.Unmarshal(data, &result)    // Uses pooled decoder
+    data, _ := tinybin.Encode(myData)  // Uses pooled encoder
+    tinybin.Decode(data, &result)      // Uses pooled decoder
 }
 ```
 
@@ -259,11 +271,11 @@ import "encoding/binary"
 // New way - minimal, WebAssembly optimized
 import "github.com/cdvelop/tinybin"
 
-// Marshal with automatic type detection
-data, err := tinybin.Marshal(myStruct)
+// Encode with automatic type detection
+data, err := tinybin.Encode(myStruct)
 
-// Unmarshal with type safety
-err = tinybin.Unmarshal(data, &myStruct)
+// Decode with type safety
+err = tinybin.Decode(data, &myStruct)
 ```
 
 ### Performance Comparison
@@ -293,7 +305,7 @@ For high-performance scenarios:
 ```go
 // ✅ Efficient - uses pooling
 for i := range items {
-    data, _ := tinybin.Marshal(items[i])
+    data, _ := tinybin.Encode(items[i])
     // process data
 }
 
@@ -306,10 +318,10 @@ for i := range items {
 
 ### 3. Handle Errors Appropriately
 ```go
-data, err := tinybin.Marshal(myData)
+data, err := tinybin.Encode(myData)
 if err != nil {
     // Log error with context
-    log.Printf("Failed to marshal data: %v", err)
+    log.Printf("Failed to encode data: %v", err)
     return err
 }
 ```

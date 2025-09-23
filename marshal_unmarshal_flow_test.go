@@ -6,7 +6,7 @@ import (
 	"github.com/cdvelop/tinyreflect"
 )
 
-func TestUnmarshalFlow(t *testing.T) {
+func TestDecodeFlow(t *testing.T) {
 	// Test the complete marshal/unmarshal flow with validation
 	original := &simpleStruct{
 		Name:      "Roman",
@@ -15,12 +15,12 @@ func TestUnmarshalFlow(t *testing.T) {
 		Ssid:      []uint32{1, 2, 3},
 	}
 
-	// Marshal
-	b, err := Marshal(original)
+	// Encode
+	b, err := Encode(original)
 	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
+		t.Fatalf("Encode failed: %v", err)
 	}
-	t.Logf("Marshal succeeded, bytes length: %d", len(b))
+	t.Logf("Encode succeeded, bytes length: %d", len(b))
 
 	decoded := &simpleStruct{}
 
@@ -45,9 +45,9 @@ func TestUnmarshalFlow(t *testing.T) {
 	t.Logf("scanType succeeded: %T", codec)
 
 	// Now test the actual unmarshal
-	err = Unmarshal(b, decoded)
+	err = Decode(b, decoded)
 	if err != nil {
-		t.Fatalf("Unmarshal failed: %v", err)
+		t.Fatalf("Decode failed: %v", err)
 	}
 
 	// Validate the results
@@ -70,5 +70,5 @@ func TestUnmarshalFlow(t *testing.T) {
 		}
 	}
 
-	t.Logf("Unmarshal flow test completed successfully!")
+	t.Logf("Decode flow test completed successfully!")
 }

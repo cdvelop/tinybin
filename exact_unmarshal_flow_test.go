@@ -6,8 +6,8 @@ import (
 	"github.com/cdvelop/tinyreflect"
 )
 
-func TestExactUnmarshalFlow(t *testing.T) {
-	// Reproduce the exact flow from Unmarshal -> Decode -> scanToCache
+func TestExactDecodeFlow(t *testing.T) {
+	// Reproduce the exact flow from Decode -> Decode -> scanToCache
 	s := &simpleStruct{
 		Name:      "Roman",
 		Timestamp: 1357092245000000006,
@@ -15,12 +15,12 @@ func TestExactUnmarshalFlow(t *testing.T) {
 		Ssid:      []uint32{1, 2, 3},
 	}
 
-	// Marshal first (this should work)
-	b, err := Marshal(s)
+	// Encode first (this should work)
+	b, err := Encode(s)
 	if err != nil {
-		t.Fatalf("Marshal failed: %v", err)
+		t.Fatalf("Encode failed: %v", err)
 	}
-	t.Logf("Marshal succeeded: %v", b)
+	t.Logf("Encode succeeded: %v", b)
 
 	// Now test the decode flow step by step
 	dest := &simpleStruct{}

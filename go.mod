@@ -8,5 +8,3 @@ require (
 )
 
 replace github.com/cdvelop/tinyreflect v0.0.27 => ../tinyreflect
-
-replace github.com/cdvelop/tinystring v0.0.6 => ../tinystring

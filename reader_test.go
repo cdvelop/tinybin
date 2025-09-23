@@ -26,11 +26,11 @@ func TestReader_Slice(t *testing.T) {
 
 // TestReaderEOF commented out since it uses bigStruct which contains maps and time.Time
 // func TestReaderEOF(t *testing.T) {
-// 	b, _ := Marshal(newBigStruct())
+// 	b, _ := Encode(newBigStruct())
 //
 // 	for size := 0; size < len(b)-1; size++ {
 // 		var output bigStruct
-// 		if err := Unmarshal(b[0:size], &output); err == nil {
+// 		if err := Decode(b[0:size], &output); err == nil {
 // 			t.Error("Expected error, got nil")
 // 		}
 // 	}
@@ -40,7 +40,7 @@ func TestReader_Slice(t *testing.T) {
 // which are not supported in tinyreflect
 // func TestStreamReader(t *testing.T) {
 // 	input := newBigStruct()
-// 	b, _ := Marshal(input)
+// 	b, _ := Encode(input)
 //
 // 	dec := NewDecoder(newNetworkSource(b))
 // 	out := new(bigStruct)

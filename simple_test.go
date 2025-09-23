@@ -20,15 +20,15 @@ func TestBasicStruct(t *testing.T) {
 		IsAdult: true,
 	}
 
-	b, err := Marshal(v)
+	b, err := Encode(v)
 	if err != nil {
-		t.Fatalf("Marshal error: %v", err)
+		t.Fatalf("Encode error: %v", err)
 	}
 
 	s := &basicStruct{}
-	err = Unmarshal(b, s)
+	err = Decode(b, s)
 	if err != nil {
-		t.Fatalf("Unmarshal error: %v", err)
+		t.Fatalf("Decode error: %v", err)
 	}
 
 	if v.Name != s.Name || v.Age != s.Age || v.Height != s.Height || v.IsAdult != s.IsAdult {
