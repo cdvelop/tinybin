@@ -1,16 +1,8 @@
-//go:build !wasm
-// +build !wasm
-
 package tinybin
 
 import (
 	"unsafe"
 )
-
-// ToString converts byte slice to a string without allocating.
-func ToString(b *[]byte) string {
-	return *(*string)(unsafe.Pointer(b))
-}
 
 // ToBytes converts a string to a byte slice without allocating.
 func ToBytes(v string) []byte {
@@ -19,12 +11,4 @@ func ToBytes(v string) []byte {
 	bytesData := unsafe.Slice(data, len(v))
 
 	return bytesData
-}
-
-func binaryToBools(b *[]byte) []bool {
-	return *(*[]bool)(unsafe.Pointer(b))
-}
-
-func boolsToBinary(v *[]bool) []byte {
-	return *(*[]byte)(unsafe.Pointer(v))
 }
