@@ -126,7 +126,7 @@ func (tb *TinyBin) scan(t *tinyreflect.Type) (c Codec, err error) {
 	}
 
 	// Scan for the first time
-	c, err = ScanType(t)
+	c, err = scanType(t)
 	if err != nil {
 		return
 	}

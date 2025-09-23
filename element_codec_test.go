@@ -9,6 +9,7 @@ import (
 // TestElementCodecFlow tests the element codec flow for slice elements
 // This test helps ensure proper codec detection and encoding for slice elements
 func TestElementCodecFlow(t *testing.T) {
+	tb := New()
 	// Test slice of structs
 	input := []simpleStruct{{
 		Name:      "Roman",
@@ -22,7 +23,7 @@ func TestElementCodecFlow(t *testing.T) {
 	t.Logf("Slice type: %p, kind: %s, length: %d", rv.Type(), rv.Type().Kind().String(), mustGetLen(rv))
 
 	// Step 2: Get the slice codec
-	sliceCodec, err := ScanType(rv.Type())
+	sliceCodec, err := tb.scan(rv.Type())
 	if err != nil {
 		t.Fatalf("Failed to scan slice type: %v", err)
 	}
@@ -52,7 +53,7 @@ func TestElementCodecFlow(t *testing.T) {
 		}
 
 		// Test that we can scan the element type independently
-		elemTypeCodec, err := ScanType(elem.Type())
+		elemTypeCodec, err := tb.scan(elem.Type())
 		if err != nil {
 			t.Fatalf("Failed to scan element type: %v", err)
 		}

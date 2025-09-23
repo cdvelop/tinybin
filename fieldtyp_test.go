@@ -7,6 +7,7 @@ import (
 )
 
 func TestFieldTypNil(t *testing.T) {
+	tb := New()
 	// Test the exact struct from the failing test
 	type simpleStruct struct {
 		Name      string
@@ -44,12 +45,12 @@ func TestFieldTypNil(t *testing.T) {
 		} else {
 			t.Logf("✅ Field %d (%s) has Typ: %p, Kind: %v", i, field.Name, field.Typ, field.Typ.Kind())
 
-			// Test ScanType on this field
-			codec, err := ScanType(field.Typ)
+			// Test scan on this field
+			codec, err := tb.scan(field.Typ)
 			if err != nil {
-				t.Errorf("❌ ScanType failed for field %d (%s): %v", i, field.Name, err)
+				t.Errorf("❌ scan failed for field %d (%s): %v", i, field.Name, err)
 			} else {
-				t.Logf("✅ ScanType succeeded for field %d (%s): %T", i, field.Name, codec)
+				t.Logf("✅ scan succeeded for field %d (%s): %T", i, field.Name, codec)
 			}
 		}
 	}

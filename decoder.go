@@ -1,7 +1,6 @@
 package tinybin
 
 import (
-	"io"
 	"math"
 
 	"github.com/cdvelop/tinyreflect"
@@ -13,14 +12,6 @@ type Decoder struct {
 	reader  reader
 	schemas map[*tinyreflect.Type]Codec
 	tinyBin *TinyBin // Reference to the TinyBin instance
-}
-
-// NewDecoder creates a binary decoder.
-func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{
-		reader:  newReader(r),
-		schemas: make(map[*tinyreflect.Type]Codec),
-	}
 }
 
 // scanToCache escanea el tipo y lo cachea usando la instancia de TinyBin.

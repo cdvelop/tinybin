@@ -39,7 +39,7 @@ func TestDecodePipeline(t *testing.T) {
 
 		// Step 2: Verify unmarshal pipeline components
 		decoded := &OuterStruct{}
-		decoder := NewDecoder(bytes.NewReader(payload))
+		decoder := tb.NewDecoder(bytes.NewReader(payload))
 
 		// Step 3: Test ValueOf and Indirect operations (core of unmarshal)
 		rv := tinyreflect.ValueOf(decoded)
@@ -60,12 +60,12 @@ func TestDecodePipeline(t *testing.T) {
 
 		// Step 4: Test codec resolution (ScanType functionality)
 		typ := indirect.Type()
-		structCodec, err := ScanType(typ)
+		structCodec, err := tb.scan(typ)
 		if err != nil {
-			t.Fatalf("ScanType failed: %v", err)
+			t.Fatalf("scan failed: %v", err)
 		}
 		if structCodec == nil {
-			t.Fatal("scanType returned nil codec")
+			t.Fatal("scan returned nil codec")
 		}
 
 		// Step 5: Test actual decoding (this was failing before the fix)

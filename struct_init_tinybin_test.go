@@ -8,6 +8,7 @@ import (
 )
 
 func TestStructFieldTypInitializationInTinybin(t *testing.T) {
+	tb := New()
 	// Use the exact same struct as the failing test
 	s := &simpleStruct{
 		Name:      "Roman",
@@ -58,15 +59,15 @@ func TestStructFieldTypInitializationInTinybin(t *testing.T) {
 		}
 		t.Logf("Field(%d) via method: Name=%s, Typ=%p", i, field.Name, field.Typ)
 
-		// Test ScanType on each field
+		// Test scan on each field
 		if field.Typ == nil {
 			t.Errorf("❌ Field %d (%s) has nil Typ!", i, field.Name)
 		} else {
-			codec, err := ScanType(field.Typ)
+			codec, err := tb.scan(field.Typ)
 			if err != nil {
-				t.Errorf("❌ ScanType failed for field %d (%s): %v", i, field.Name, err)
+				t.Errorf("❌ scan failed for field %d (%s): %v", i, field.Name, err)
 			} else {
-				t.Logf("✅ ScanType succeeded for field %d (%s): %T", i, field.Name, codec)
+				t.Logf("✅ scan succeeded for field %d (%s): %T", i, field.Name, codec)
 			}
 		}
 	}

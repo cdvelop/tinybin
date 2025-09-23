@@ -7,13 +7,14 @@ import (
 )
 
 func TestScanToCacheWithNilType(t *testing.T) {
-	// Test what happens when we pass nil to ScanType
+	tb := New()
+	// Test what happens when we pass nil to scan
 	// This should fail
-	_, err := ScanType(nil)
+	_, err := tb.scan(nil)
 	if err != nil {
-		t.Logf("✅ ScanType correctly failed with nil: %v", err)
+		t.Logf("✅ scan correctly failed with nil: %v", err)
 	} else {
-		t.Error("❌ ScanType should fail with nil type")
+		t.Error("❌ scan should fail with nil type")
 	}
 
 	// Test with valid type
@@ -32,28 +33,28 @@ func TestScanToCacheWithNilType(t *testing.T) {
 		t.Fatal("rv.Type() returned nil")
 	}
 
-	t.Logf("Testing ScanType with valid type: %p", typ)
+	t.Logf("Testing scan with valid type: %p", typ)
 
-	codec, err := ScanType(typ)
+	codec, err := tb.scan(typ)
 	if err != nil {
-		t.Fatalf("ScanType failed: %v", err)
+		t.Fatalf("scan failed: %v", err)
 	}
 
 	if codec == nil {
-		t.Fatal("ScanType returned nil codec")
+		t.Fatal("scan returned nil codec")
 	}
 
-	t.Logf("✅ ScanType succeeded with codec: %T", codec)
+	t.Logf("✅ scan succeeded with codec: %T", codec)
 
-	// Test that it works consistently (ScanType doesn't cache, so different instances are expected)
-	codec2, err := ScanType(typ)
+	// Test that it works consistently (scan doesn't cache, so different instances are expected)
+	codec2, err := tb.scan(typ)
 	if err != nil {
-		t.Fatalf("ScanType failed on second call: %v", err)
+		t.Fatalf("scan failed on second call: %v", err)
 	}
 
 	if codec2 == nil {
-		t.Error("❌ ScanType returned nil codec on second call")
+		t.Error("❌ scan returned nil codec on second call")
 	} else {
-		t.Logf("✅ ScanType returned consistent codec type on second call: %T", codec2)
+		t.Logf("✅ scan returned consistent codec type on second call: %T", codec2)
 	}
 }

@@ -5,8 +5,8 @@ import (
 	. "github.com/cdvelop/tinystring"
 )
 
-// ScanType scans the type
-func ScanType(t *tinyreflect.Type) (Codec, error) {
+// scanType scans the type
+func scanType(t *tinyreflect.Type) (Codec, error) {
 	if t == nil {
 		return nil, Err(D.Value, D.Type, D.Nil)
 	}
@@ -27,7 +27,7 @@ func ScanType(t *tinyreflect.Type) (Codec, error) {
 		if err != nil {
 			return nil, err
 		}
-		elemCodec, err := ScanType(elem)
+		elemCodec, err := scanType(elem)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +41,7 @@ func ScanType(t *tinyreflect.Type) (Codec, error) {
 		if err != nil {
 			return nil, err
 		}
-		elemCodec, err := ScanType(elem)
+		elemCodec, err := scanType(elem)
 		if err != nil {
 			return nil, err
 		}
@@ -72,7 +72,7 @@ func ScanType(t *tinyreflect.Type) (Codec, error) {
 			if err != nil {
 				return nil, err
 			}
-			elemCodec, err := ScanType(elemElem)
+			elemCodec, err := scanType(elemElem)
 			if err != nil {
 				return nil, err
 			}
@@ -82,7 +82,7 @@ func ScanType(t *tinyreflect.Type) (Codec, error) {
 				elemCodec: elemCodec,
 			}, nil
 		default:
-			elemCodec, err := ScanType(elem)
+			elemCodec, err := scanType(elem)
 			if err != nil {
 				return nil, err
 			}
@@ -104,7 +104,7 @@ func ScanType(t *tinyreflect.Type) (Codec, error) {
 				// Debug: Print information about the field
 				return nil, Err(D.Field, D.Type, D.Nil, "field", Convert(i).String(), "name", field.Name)
 			}
-			codec, err := ScanType(field.Typ)
+			codec, err := scanType(field.Typ)
 			if err != nil {
 				return nil, err
 			}

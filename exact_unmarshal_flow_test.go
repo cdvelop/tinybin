@@ -35,10 +35,10 @@ func TestExactDecodeFlow(t *testing.T) {
 		t.Fatal("rv.Type() is nil - this is the problem")
 	}
 
-	// Step 3: Call ScanType directly (this is the public API)
-	codec, err := ScanType(rv.Type())
+	// Step 3: Call scan directly (this is the public API)
+	codec, err := tb.scan(rv.Type())
 	if err != nil {
-		t.Fatalf("ScanType failed: %v", err)
+		t.Fatalf("scan failed: %v", err)
 	}
 
 	t.Logf("scanToCache succeeded: %T", codec)

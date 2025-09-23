@@ -9,6 +9,7 @@ import (
 // TestEncodePipelineSteps tests the complete encoding pipeline step by step
 // This provides coverage for the encoder pipeline from ValueOf to codec execution
 func TestEncodePipelineSteps(t *testing.T) {
+	tb := New()
 	// Test exactly what happens in the encoder pipeline
 	input := []simpleStruct{{
 		Name:      "Roman",
@@ -31,10 +32,10 @@ func TestEncodePipelineSteps(t *testing.T) {
 		t.Fatal("typ is nil!")
 	}
 
-	// Step 2: ScanType (like in Encode)
-	c, err := ScanType(typ)
+	// Step 2: scan (like in Encode)
+	c, err := tb.scan(typ)
 	if err != nil {
-		t.Fatalf("ScanType failed: %v", err)
+		t.Fatalf("scan failed: %v", err)
 	}
 	t.Logf("Step 2 - codec type: %T", c)
 

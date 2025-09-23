@@ -17,14 +17,6 @@ type Encoder struct {
 	tinyBin *TinyBin // Reference to the TinyBin instance
 }
 
-// NewEncoder creates a new encoder.
-func NewEncoder(out io.Writer) *Encoder {
-	return &Encoder{
-		out:     out,
-		schemas: make(map[*tinyreflect.Type]Codec),
-	}
-}
-
 // scanToCache escanea el tipo y lo cachea usando la instancia de TinyBin.
 func (e *Encoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
 	return e.tinyBin.scanToCache(t, e.schemas)

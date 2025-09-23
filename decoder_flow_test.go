@@ -7,6 +7,7 @@ import (
 )
 
 func TestDecoderFullFlow(t *testing.T) {
+	tb := New()
 	// This replicates the exact flow from decoder.go
 	type simpleStruct struct {
 		Name      string
@@ -34,10 +35,10 @@ func TestDecoderFullFlow(t *testing.T) {
 
 	t.Logf("rv.Type() = %p, Kind: %v", typ, typ.Kind())
 
-	// decoder.go line 52: ScanType(rv.Type())
-	codec, err := ScanType(typ)
+	// decoder.go line 52: scan(rv.Type())
+	codec, err := tb.scan(typ)
 	if err != nil {
-		t.Fatalf("ScanType failed: %v", err)
+		t.Fatalf("scan failed: %v", err)
 	}
 
 	if codec == nil {

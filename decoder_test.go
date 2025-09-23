@@ -63,7 +63,7 @@ func TestDecodeFromReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	decoder := NewDecoder(&oneByteReader{content: encoded})
+	decoder := tb.NewDecoder(&oneByteReader{content: encoded})
 	str, err := decoder.ReadString()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)

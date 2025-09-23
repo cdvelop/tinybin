@@ -38,10 +38,10 @@ func TestDecodeFlow(t *testing.T) {
 	}
 	t.Logf("Type: %p, Kind: %v", typ, typ.Kind())
 
-	// Test ScanType directly to ensure codec creation works
-	codec, err := ScanType(typ)
+	// Test scan directly to ensure codec creation works
+	codec, err := tb.scan(typ)
 	if err != nil {
-		t.Fatalf("ScanType failed: %v", err)
+		t.Fatalf("scan failed: %v", err)
 	}
 	t.Logf("ScanType succeeded: %T", codec)
 
