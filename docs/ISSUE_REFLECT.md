@@ -220,7 +220,7 @@ if err != nil {
 
 **❌ Unsupported:**
 - `complex64`, `complex128`
-- `interface{}`, `chan`, `func` 
+- `any`, `chan`, `func` 
 - Maps (replaced with slices)
 - Custom marshaling methods
 

@@ -8,7 +8,7 @@ import (
 
 func TestBinaryDecodeStruct(t *testing.T) {
 	s := &s0{}
-	err := Unmarshal(s0b, s)
+	err := Decode(s0b, s)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -20,11 +20,11 @@ func TestBinaryDecodeStruct(t *testing.T) {
 func TestBinaryDecodeToValueErrors(t *testing.T) {
 	b := []byte{1, 0, 0, 0}
 	var v uint32
-	err := Unmarshal(b, v)
+	err := Decode(b, v)
 	if err == nil {
 		t.Error("Expected error")
 	}
-	err = Unmarshal(b, &v)
+	err = Decode(b, &v)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -56,7 +56,7 @@ func (r *oneByteReader) Read(buf []byte) (n int, err error) {
 
 func TestDecodeFromReader(t *testing.T) {
 	data := "data string"
-	encoded, err := Marshal(data)
+	encoded, err := Encode(data)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

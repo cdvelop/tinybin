@@ -28,7 +28,7 @@ func TestUnmarshalPipeline(t *testing.T) {
 		}
 
 		// Step 1: Marshal
-		payload, err := Marshal(original)
+		payload, err := Encode(original)
 		if err != nil {
 			t.Fatalf("Marshal failed: %v", err)
 		}
@@ -97,13 +97,13 @@ func TestUnmarshalPipeline(t *testing.T) {
 		}
 
 		// Full roundtrip test
-		payload, err := Marshal(original)
+		payload, err := Encode(original)
 		if err != nil {
 			t.Fatalf("Marshal failed: %v", err)
 		}
 
 		decoded := &OuterStruct{}
-		err = Unmarshal(payload, decoded)
+		err = Decode(payload, decoded)
 		if err != nil {
 			t.Fatalf("Unmarshal failed: %v", err)
 		}

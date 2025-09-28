@@ -43,13 +43,13 @@ func TestStructPointerFieldAccess(t *testing.T) {
 		}
 		
 		// Verify marshal/unmarshal roundtrip
-		payload, err := Marshal(original)
+		payload, err := Encode(original)
 		if err != nil {
 			t.Fatalf("Marshal failed: %v", err)
 		}
 		
 		decoded := &OuterStruct{}
-		err = Unmarshal(payload, decoded)
+		err = Decode(payload, decoded)
 		if err != nil {
 			t.Fatalf("Unmarshal failed: %v", err)
 		}
@@ -67,13 +67,13 @@ func TestStructPointerFieldAccess(t *testing.T) {
 	t.Run("NilPointer", func(t *testing.T) {
 		original := &OuterStruct{Ptr: nil}
 		
-		payload, err := Marshal(original)
+		payload, err := Encode(original)
 		if err != nil {
 			t.Fatalf("Marshal failed: %v", err)
 		}
 		
 		decoded := &OuterStruct{}
-		err = Unmarshal(payload, decoded)
+		err = Decode(payload, decoded)
 		if err != nil {
 			t.Fatalf("Unmarshal failed: %v", err)
 		}

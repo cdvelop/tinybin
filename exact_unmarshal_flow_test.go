@@ -16,7 +16,7 @@ func TestExactUnmarshalFlow(t *testing.T) {
 	}
 
 	// Marshal first (this should work)
-	b, err := Marshal(s)
+	b, err := Encode(s)
 	if err != nil {
 		t.Fatalf("Marshal failed: %v", err)
 	}

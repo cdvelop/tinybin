@@ -11,12 +11,12 @@ import (
 )
 
 // Reusable long-lived decoder pool.
-var decoders = &sync.Pool{New: func() interface{} {
+var decoders = &sync.Pool{New: func() any {
 	return NewDecoder(newReader(nil))
 }}
 
-// Unmarshal decodes the payload from the binary format.
-func Unmarshal(b []byte, v interface{}) (err error) {
+// Decode decodes the payload from the binary format.
+func Decode(b []byte, v any) (err error) {
 
 	// Get the decoder from the pool, reset it
 	d := decoders.Get().(*Decoder)
@@ -43,7 +43,7 @@ func NewDecoder(r io.Reader) *Decoder {
 }
 
 // Decode decodes a value by reading from the underlying io.Reader.
-func (d *Decoder) Decode(v interface{}) (err error) {
+func (d *Decoder) Decode(v any) (err error) {
 	rv := tinyreflect.Indirect(tinyreflect.ValueOf(v))
 	canAddr := rv.CanAddr()
 	if !canAddr {
