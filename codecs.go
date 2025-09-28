@@ -194,13 +194,24 @@ func (c *reflectSliceOfPtrCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err
 				if err != nil {
 					return err
 				}
-				newPtr := tinyreflect.New(c.elemType)
-				if err = ptr.Set(newPtr); err != nil {
-					return err
-				}
-				indirect := tinyreflect.Indirect(ptr)
+				// Create new pointer value and decode directly to it
+				newPtr := tinyreflect.NewValue(c.elemType)
+				indirect := tinyreflect.Indirect(newPtr)
 				if err = c.elemCodec.DecodeTo(d, indirect); err != nil {
 					return err
+				}
+				// Now copy the decoded value to the slice element
+				if err = ptr.Set(newPtr); err != nil {
+					// If Set fails due to type incompatibility, try direct assignment
+					elem, elemErr := ptr.Elem()
+					if elemErr == nil {
+						decodedElem := tinyreflect.Indirect(newPtr)
+						if copyErr := elem.Set(decodedElem); copyErr != nil {
+							return err // Return original Set error
+						}
+					} else {
+						return err // Return original Set error
+					}
 				}
 			}
 		}
@@ -468,9 +479,10 @@ func (c *reflectPointerCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err er
 		if elemType == nil {
 			return Err(D.Binary, "pointer", D.Type, D.Nil)
 		}
-		newPtr := tinyreflect.New(elemType)
+		newPtr := tinyreflect.NewValue(elemType)
 		if err = rv.Set(newPtr); err != nil {
-			return err
+			// DEBUG: This is where the error is happening
+			return Err("DEBUG", "reflectPointerCodec", "Set", "failed", err.Error())
 		}
 	}
 
