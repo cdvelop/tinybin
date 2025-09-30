@@ -105,13 +105,14 @@ Benchmark_Binary/unmarshal-12       	 4224048	       283.0 ns/op	      72 B/op	 
 */
 func BenchmarkBinary(b *testing.B) {
 	v := testMsg
-	enc, _ := Encode(&v)
+	tb := New()
+	enc, _ := tb.Encode(&v)
 
 	b.Run("marshal", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			Encode(&v)
+			tb.Encode(&v)
 		}
 	})
 
@@ -121,7 +122,7 @@ func BenchmarkBinary(b *testing.B) {
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
 			buffer.Reset()
-			EncodeTo(&v, &buffer)
+			tb.EncodeTo(&v, &buffer)
 		}
 	})
 
@@ -130,7 +131,7 @@ func BenchmarkBinary(b *testing.B) {
 		b.ResetTimer()
 		var out msg
 		for n := 0; n < b.N; n++ {
-			Decode(enc, &out)
+			tb.Decode(enc, &out)
 		}
 	})
 }
@@ -158,7 +159,8 @@ func BenchmarkJSON(b *testing.B) {
 }
 
 func TestBinaryEncodeStruct(t *testing.T) {
-	b, err := Encode(s0v)
+	tb := New()
+	b, err := tb.Encode(s0v)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -176,9 +178,10 @@ func TestEncoderSizeOf(t *testing.T) {
 }
 
 func TestMarshalWithCustomCodec(t *testing.T) {
+	tb := New()
 	v := testCustom("custom codec")
 
-	b, err := Encode(v)
+	b, err := tb.Encode(v)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -187,7 +190,7 @@ func TestMarshalWithCustomCodec(t *testing.T) {
 	}
 
 	var out testCustom
-	err = Decode(b, &out)
+	err = tb.Decode(b, &out)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

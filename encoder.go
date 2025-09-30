@@ -1,69 +1,35 @@
 package tinybin
 
 import (
-	"bytes"
 	"io"
 	"math"
-	"sync"
 
 	"github.com/cdvelop/tinyreflect"
 	. "github.com/cdvelop/tinystring"
 )
 
-// Reusable long-lived encoder pool.
-var encoders = &sync.Pool{New: func() any {
-	return &Encoder{
-		schemas: make(map[*tinyreflect.Type]Codec),
-	}
-}}
-
-// Encode encodes the payload into binary format.
-func Encode(v any) (output []byte, err error) {
-	var buffer bytes.Buffer
-	buffer.Grow(64)
-
-	// Encode and set the buffer if successful
-	if err = EncodeTo(v, &buffer); err == nil {
-		output = buffer.Bytes()
-	}
-	return
-}
-
-// EncodeTo encodes the payload into a specific destination.
-func EncodeTo(v any, dst io.Writer) (err error) {
-
-	// Get the encoder from the pool, reset it
-	e := encoders.Get().(*Encoder)
-	e.Reset(dst)
-
-	// Encode and set the buffer if successful
-	err = e.Encode(v)
-
-	// Put the encoder back when we're finished
-	encoders.Put(e)
-	return
-}
+// Note: Encoder pool is now managed by TinyBin instance
 
 // Encoder represents a binary encoder.
 type Encoder struct {
 	scratch [10]byte
-	schemas map[*tinyreflect.Type]Codec
+	tb      *TinyBin // Reference to the TinyBin instance for schema caching
 	out     io.Writer
 	err     error
 }
 
-// NewEncoder creates a new encoder.
+// NewEncoder creates a new encoder (deprecated - use TinyBin instance methods).
 func NewEncoder(out io.Writer) *Encoder {
 	return &Encoder{
-		out:     out,
-		schemas: make(map[*tinyreflect.Type]Codec),
+		out: out,
 	}
 }
 
 // Reset resets the encoder and makes it ready to be reused.
-func (e *Encoder) Reset(out io.Writer) {
+func (e *Encoder) Reset(out io.Writer, tb *TinyBin) {
 	e.out = out
 	e.err = nil
+	e.tb = tb
 }
 
 // Buffer returns the underlying writer.
@@ -82,7 +48,7 @@ func (e *Encoder) Encode(v any) (err error) {
 	}
 
 	var c Codec
-	if c, err = scanToCache(typ, e.schemas); err != nil {
+	if c, err = e.scanToCache(typ); err != nil {
 		return
 	}
 
@@ -181,4 +147,14 @@ func (e *Encoder) writeBool(v bool) {
 func (e *Encoder) WriteString(v string) {
 	e.WriteUvarint(uint64(len(v)))
 	e.Write(ToBytes(v))
+}
+
+// scanToCache scans the type and caches it in the TinyBin instance
+func (e *Encoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
+	if e.tb == nil {
+		return nil, Err("Encoder", "scanToCache", "TinyBin", "nil")
+	}
+
+	// Use the TinyBin instance's schema caching mechanism
+	return e.tb.scanToCache(t)
 }

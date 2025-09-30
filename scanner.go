@@ -1,14 +1,11 @@
 package tinybin
 
 import (
-	"sync"
-
 	"github.com/cdvelop/tinyreflect"
 	. "github.com/cdvelop/tinystring"
 )
 
-// Map of all the schemas we've encountered so far
-var schemas = new(sync.Map)
+// Note: Global schemas map removed - now using instance-based caching in TinyBin
 
 // scanToCache scans the type and caches in the local cache.
 func scanToCache(t *tinyreflect.Type, cache map[*tinyreflect.Type]Codec) (Codec, error) {
@@ -25,28 +22,9 @@ func scanToCache(t *tinyreflect.Type, cache map[*tinyreflect.Type]Codec) (Codec,
 	return c, nil
 }
 
-// Scan gets a codec for the type and uses a cached schema if the type was
-// previously scanned.
+// Scan gets a codec for the type. Caching is now handled by TinyBin instance.
 func scan(t *tinyreflect.Type) (c Codec, err error) {
-
-	// Attempt to load from cache first
-	if f, ok := schemas.Load(t); ok {
-		c = f.(Codec)
-		return
-	}
-
-	// Scan for the first time
-	c, err = scanType(t)
-	if err != nil {
-		return
-	}
-
-	// Load or store again
-	if f, ok := schemas.LoadOrStore(t, c); ok {
-		c = f.(Codec)
-		return
-	}
-	return
+	return scanType(t)
 }
 
 // ScanType scans the type

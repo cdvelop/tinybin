@@ -21,6 +21,7 @@ func TestUnmarshalPipeline(t *testing.T) {
 	}
 
 	t.Run("CompleteUnmarshalFlow", func(t *testing.T) {
+		tb := New()
 		// Test data with non-nil pointer
 		original := &OuterStruct{
 			Inner: &InnerStruct{V: 42, S: "test"},
@@ -28,7 +29,7 @@ func TestUnmarshalPipeline(t *testing.T) {
 		}
 
 		// Step 1: Marshal
-		payload, err := Encode(original)
+		payload, err := tb.Encode(original)
 		if err != nil {
 			t.Fatalf("Marshal failed: %v", err)
 		}
@@ -90,6 +91,7 @@ func TestUnmarshalPipeline(t *testing.T) {
 	})
 
 	t.Run("NilPointerHandling", func(t *testing.T) {
+		tb := New()
 		// Test data with nil pointer
 		original := &OuterStruct{
 			Inner: nil,
@@ -97,13 +99,13 @@ func TestUnmarshalPipeline(t *testing.T) {
 		}
 
 		// Full roundtrip test
-		payload, err := Encode(original)
+		payload, err := tb.Encode(original)
 		if err != nil {
 			t.Fatalf("Marshal failed: %v", err)
 		}
 
 		decoded := &OuterStruct{}
-		err = Decode(payload, decoded)
+		err = tb.Decode(payload, decoded)
 		if err != nil {
 			t.Fatalf("Unmarshal failed: %v", err)
 		}

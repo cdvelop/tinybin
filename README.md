@@ -46,15 +46,18 @@ func main() {
         Balance: 123.45,
     }
 
+    // Create TinyBin instance
+    tb := tinybin.New()
+
     // Encode to binary
-    data, err := tinybin.Encode(user)
+    data, err := tb.Encode(user)
     if err != nil {
         panic(err)
     }
 
     // Decode from binary
     var decoded User
-    err = tinybin.Decode(data, &decoded)
+    err = tb.Decode(data, &decoded)
     if err != nil {
         panic(err)
     }
@@ -67,59 +70,55 @@ func main() {
 
 ### Encoding Functions
 
-#### `Encode(v any) ([]byte, error)`
+#### `(*TinyBin) Encode(v any) ([]byte, error)`
 Encodes any value into binary format and returns the resulting bytes.
 
 ```go
-data, err := tinybin.Encode(myStruct)
+tb := tinybin.New()
+data, err := tb.Encode(myStruct)
 ```
 
-#### `EncodeTo(v any, dst io.Writer) error`
+#### `(*TinyBin) EncodeTo(v any, dst io.Writer) error`
 Encodes a value directly to an `io.Writer`.
 
 ```go
+tb := tinybin.New()
 var buf bytes.Buffer
-err := tinybin.EncodeTo(myStruct, &buf)
+err := tb.EncodeTo(myStruct, &buf)
 ```
 
 ### Decoding Functions
 
-#### `Decode(b []byte, v any) error`
+#### `(*TinyBin) Decode(b []byte, v any) error`
 Decodes binary data into a value. The destination must be a pointer.
 
 ```go
+tb := tinybin.New()
 var result MyStruct
-err := tinybin.Decode(data, &result)
+err := tb.Decode(data, &result)
 ```
 
 ### Encoder Type
 
-#### `NewEncoder(out io.Writer) *Encoder`
-Creates a new encoder that writes to the specified `io.Writer`.
-
-```go
-encoder := tinybin.NewEncoder(&buffer)
-```
+**Note**: Encoders are now managed internally by TinyBin instances through object pooling for better performance and resource management. Direct creation of encoders is deprecated.
 
 #### `(*Encoder) Encode(v any) error`
 Encodes a value using the encoder instance.
 
 ```go
-err := encoder.Encode(myValue)
-```
-
-#### `(*Encoder) Reset(out io.Writer)`
-Resets the encoder to write to a different `io.Writer`.
-
-```go
-encoder.Reset(newBuffer)
+tb := tinybin.New()
+var buffer bytes.Buffer
+err := tb.EncodeTo(myValue, &buffer) // Uses pooled encoder internally
 ```
 
 #### `(*Encoder) Buffer() io.Writer`
 Returns the underlying writer.
 
 ```go
-writer := encoder.Buffer()
+tb := tinybin.New()
+var buffer bytes.Buffer
+tb.EncodeTo(myValue, &buffer)
+writer := buffer // Direct access to buffer
 ```
 
 ### Encoder Write Methods
@@ -139,18 +138,15 @@ The `Encoder` type provides methods for writing primitive types:
 
 ### Decoder Type
 
-#### `NewDecoder(r io.Reader) *Decoder`
-Creates a new decoder that reads from the specified `io.Reader`.
+**Note**: Decoders are now managed internally by TinyBin instances through object pooling for better performance and resource management. Direct creation of decoders is deprecated.
+
+#### `(*TinyBin) Decode(data []byte, v any) error`
+Decodes binary data into a value using the TinyBin instance. The destination must be a pointer.
 
 ```go
-decoder := tinybin.NewDecoder(bytes.NewReader(data))
-```
-
-#### `(*Decoder) Decode(v any) error`
-Decodes a value using the decoder instance. The destination must be a pointer.
-
-```go
-err := decoder.Decode(&result)
+tb := tinybin.New()
+var result MyStruct
+err := tb.Decode(data, &result)
 ```
 
 ### Decoder Read Methods
@@ -169,6 +165,83 @@ The `Decoder` type provides methods for reading primitive types:
 - `ReadString() (string, error)` - reads a length-prefixed string
 - `Slice(n int) ([]byte, error)` - returns a slice of the next n bytes
 - `ReadSlice() ([]byte, error)` - reads a variable-length byte slice
+
+## TinyBin Constructor and Instance Architecture
+
+### Creating Instances
+
+#### `New(args ...any) *TinyBin`
+Creates a new TinyBin instance with optional configuration. Each instance is completely isolated from others.
+
+```go
+// Basic instance (no logging)
+tb := tinybin.New()
+
+// With custom logging
+tb := tinybin.New(func(msg ...any) {
+    log.Printf("TinyBin: %v", msg)
+})
+```
+
+### Instance Isolation Benefits
+
+**Complete State Isolation**: Each TinyBin instance maintains its own:
+- Schema cache (slice-based for TinyGo compatibility)
+- Encoder and decoder object pools
+- Optional logging function
+
+**Thread Safety**: Multiple goroutines can safely use the same instance concurrently without external synchronization.
+
+**Testing Benefits**: Each test can create its own instance with custom logging for complete isolation.
+
+```go
+func TestMyFunction(t *testing.T) {
+    // Completely isolated test instance
+    tb := tinybin.New(func(msg ...any) {
+        t.Logf("TinyBin: %v", msg)
+    })
+
+    data, err := tb.Encode(testData)
+    assert.NoError(t, err)
+}
+```
+
+### Multiple Instance Patterns
+
+**Microservices Pattern**: Different services can use separate instances for complete isolation.
+
+```go
+type ProtocolManager struct {
+    httpTinyBin  *tinybin.TinyBin
+    grpcTinyBin  *tinybin.TinyBin
+    kafkaTinyBin *tinybin.TinyBin
+}
+
+func NewProtocolManager() *ProtocolManager {
+    return &ProtocolManager{
+        httpTinyBin:  tinybin.New(), // Production: no logging
+        grpcTinyBin:  tinybin.New(),
+        kafkaTinyBin: tinybin.New(),
+    }
+}
+```
+
+**Concurrent Processing**: Multiple instances can be used safely across goroutines.
+
+```go
+// Each goroutine gets its own instance for complete isolation
+go func() {
+    tb := tinybin.New()
+    data, _ := tb.Encode(data1)
+    process(data)
+}()
+
+go func() {
+    tb := tinybin.New()
+    data, _ := tb.Encode(data2) // Completely independent
+    process(data)
+}()
+```
 
 ## Supported Data Types
 
@@ -233,48 +306,149 @@ Converts a string to byte slice without allocation (unsafe operation).
 
 ## Advanced Usage
 
-### Custom Encoder/Decoder
+### Multiple Instance Usage
 
 ```go
-// Create custom encoder
-var buf bytes.Buffer
-encoder := tinybin.NewEncoder(&buf)
+// Create multiple isolated instances
+httpTB := tinybin.New()
+grpcTB := tinybin.New()
+kafkaTB := tinybin.New()
 
-// Encode multiple values
-err := encoder.Encode(value1)
-err = encoder.Encode(value2)
+// Each instance maintains its own cache and pools
+httpData, _ := httpTB.Encode(data)
+grpcData, _ := grpcTB.Encode(data)
+kafkaData, _ := kafkaTB.Encode(data)
+```
 
-// Create decoder
-decoder := tinybin.NewDecoder(&buf)
+### Custom Instance with Logging
 
-// Decode values
-err = decoder.Decode(&result1)
-err = decoder.Decode(&result2)
+```go
+// Create instance with custom logging for debugging
+tb := tinybin.New(func(msg ...any) {
+    log.Printf("TinyBin Debug: %v", msg)
+})
+
+// Use like normal
+data, err := tb.Encode(myStruct)
+if err != nil {
+    log.Printf("Encoding failed: %v", err)
+}
+```
+
+### Concurrent Usage
+
+```go
+tb := tinybin.New()
+
+// Safe concurrent usage - internal pooling handles synchronization
+go func() {
+    data, _ := tb.Encode(data1)
+    process(data)
+}()
+
+go func() {
+    data, _ := tb.Encode(data2)
+    process(data)
+}()
 ```
 
 ### Error Handling
 
 ```go
-data, err := tinybin.Encode(myValue)
+tb := tinybin.New()
+
+data, err := tb.Encode(myValue)
 if err != nil {
     // Handle encoding error
     log.Printf("Encoding failed: %v", err)
 }
 
 var result MyType
-err = tinybin.Decode(data, &result)
+err = tb.Decode(data, &result)
 if err != nil {
     // Handle decoding error
     log.Printf("Decoding failed: %v", err)
 }
 ```
 
+## Migration from Global API
+
+### Quick Migration
+
+If you're upgrading from the previous global function API, here's how to migrate:
+
+#### Before (Global Functions)
+```go
+// Old global API
+data, err := tinybin.Encode(myStruct)
+err = tinybin.Decode(data, &result)
+```
+
+#### After (Instance API)
+```go
+// New instance API
+tb := tinybin.New()
+data, err := tb.Encode(myStruct)
+err = tb.Decode(data, &result)
+```
+
+### Benefits of Migration
+
+- **Complete Isolation**: No shared state between different parts of your application
+- **Better Testing**: Each test can have its own isolated instance
+- **Thread Safety**: Multiple instances can be used safely across goroutines
+- **TinyGo Compatible**: Slice-based caching instead of sync.Map for embedded targets
+
+### Common Migration Patterns
+
+#### Simple Replacement
+```go
+// Replace all instances of:
+tinybin.Encode(data)
+tinybin.Decode(data, &result)
+tinybin.EncodeTo(data, &buffer)
+
+// With:
+tb := tinybin.New()
+tb.Encode(data)
+tb.Decode(data, &result)
+tb.EncodeTo(data, &buffer)
+```
+
+#### Service Integration
+```go
+type MyService struct {
+    tb *tinybin.TinyBin
+}
+
+func NewMyService() *MyService {
+    return &MyService{
+        tb: tinybin.New(), // Instance per service
+    }
+}
+```
+
+#### Testing Migration
+```go
+func TestMyFunction(t *testing.T) {
+    // Old way: Global state could interfere
+    // data, _ := tinybin.Encode(testData)
+
+    // New way: Completely isolated
+    tb := tinybin.New()
+    data, err := tb.Encode(testData)
+    assert.NoError(t, err)
+}
+```
+
 ## Performance Considerations
 
-- **Object Pooling**: Encoders and decoders are pooled for reuse
-- **Zero Allocations**: Where possible, operations avoid heap allocations
-- **Variable-Length Integers**: Integers are encoded with minimal bytes
-- **Unsafe Operations**: String/byte conversions use unsafe operations for performance
+- **Instance-Based Pooling**: Each TinyBin instance maintains its own encoder and decoder pools for optimal resource management
+- **Zero Allocations**: Where possible, operations avoid heap allocations for maximum performance
+- **Variable-Length Integers**: Integers are encoded with minimal bytes using efficient algorithms
+- **Unsafe Operations**: String/byte conversions use unsafe operations for performance when appropriate
+- **Slice-Based Caching**: TinyGo-compatible slice-based schema cache provides fast lookups with minimal memory overhead
+- **Complete Isolation**: Multiple instances can operate concurrently without contention, improving scalability in multi-goroutine environments
 
 ## Dependencies
 

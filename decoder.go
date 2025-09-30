@@ -4,41 +4,23 @@ import (
 	"encoding/binary"
 	"io"
 	"math"
-	"sync"
 
 	"github.com/cdvelop/tinyreflect"
 	. "github.com/cdvelop/tinystring"
 )
 
-// Reusable long-lived decoder pool.
-var decoders = &sync.Pool{New: func() any {
-	return NewDecoder(newReader(nil))
-}}
-
-// Decode decodes the payload from the binary format.
-func Decode(b []byte, v any) (err error) {
-
-	// Get the decoder from the pool, reset it
-	d := decoders.Get().(*Decoder)
-	d.reader.(*sliceReader).Reset(b) // Reset the reader
-
-	// Decode and set the buffer if successful and free the decoder
-	err = d.Decode(v)
-	decoders.Put(d)
-	return
-}
+// Note: Decoder pool is now managed by TinyBin instance
 
 // Decoder represents a binary decoder.
 type Decoder struct {
-	reader  reader
-	schemas map[*tinyreflect.Type]Codec
+	reader reader
+	tb     *TinyBin // Reference to the TinyBin instance for schema caching
 }
 
-// NewDecoder creates a binary decoder.
+// NewDecoder creates a binary decoder (deprecated - use TinyBin instance methods).
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
-		reader:  newReader(r),
-		schemas: make(map[*tinyreflect.Type]Codec),
+		reader: newReader(r),
 	}
 }
 
@@ -52,7 +34,7 @@ func (d *Decoder) Decode(v any) (err error) {
 
 	// Scan the type (this will load from cache)
 	var c Codec
-	if c, err = scanToCache(rv.Type(), d.schemas); err == nil {
+	if c, err = d.scanToCache(rv.Type()); err == nil {
 		err = c.DecodeTo(d, rv)
 	}
 
@@ -166,4 +148,24 @@ func (d *Decoder) ReadSlice() (b []byte, err error) {
 		b, err = d.Slice(int(l))
 	}
 	return
+}
+
+// Reset resets the decoder and makes it ready to be reused.
+func (d *Decoder) Reset(data []byte, tb *TinyBin) {
+	if d.reader == nil {
+		d.reader = newSliceReader(data)
+	} else {
+		d.reader.(*sliceReader).Reset(data)
+	}
+	d.tb = tb
+}
+
+// scanToCache scans the type and caches it in the TinyBin instance
+func (d *Decoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
+	if d.tb == nil {
+		return nil, Err("Decoder", "scanToCache", "TinyBin", "nil")
+	}
+
+	// Use the TinyBin instance's schema caching mechanism
+	return d.tb.scanToCache(t)
 }
