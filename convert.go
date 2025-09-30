@@ -1,6 +1,3 @@
-//go:build !wasm
-// +build !wasm
-
 package tinybin
 
 import (
@@ -19,6 +16,16 @@ func ToBytes(v string) []byte {
 	bytesData := unsafe.Slice(data, len(v))
 
 	return bytesData
+}
+
+// binaryToString converts byte slice to string.
+func binaryToString(buf *[]byte) string {
+	return string(*buf)
+}
+
+// stringToBinary converts string to byte slice.
+func stringToBinary(v string) []byte {
+	return []byte(v)
 }
 
 func binaryToBools(b *[]byte) []bool {
