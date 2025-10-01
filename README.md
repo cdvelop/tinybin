@@ -98,11 +98,11 @@ var result MyStruct
 err := tb.Decode(data, &result)
 ```
 
-### Encoder Type
+### encoder Type
 
 **Note**: Encoders are now managed internally by TinyBin instances through object pooling for better performance and resource management. Direct creation of encoders is deprecated.
 
-#### `(*Encoder) Encode(v any) error`
+#### `(*encoder) Encode(v any) error`
 Encodes a value using the encoder instance.
 
 ```go
@@ -111,7 +111,7 @@ var buffer bytes.Buffer
 err := tb.EncodeTo(myValue, &buffer) // Uses pooled encoder internally
 ```
 
-#### `(*Encoder) Buffer() io.Writer`
+#### `(*encoder) Buffer() io.Writer`
 Returns the underlying writer.
 
 ```go
@@ -121,9 +121,9 @@ tb.EncodeTo(myValue, &buffer)
 writer := buffer // Direct access to buffer
 ```
 
-### Encoder Write Methods
+### encoder Write Methods
 
-The `Encoder` type provides methods for writing primitive types:
+The `encoder` type provides methods for writing primitive types:
 
 - `Write(p []byte)` - writes raw bytes
 - `WriteVarint(v int64)` - writes a variable-length signed integer
@@ -136,7 +136,7 @@ The `Encoder` type provides methods for writing primitive types:
 - `WriteBool(v bool)` - writes a boolean value
 - `WriteString(v string)` - writes a string with length prefix
 
-### Decoder Type
+### decoder Type
 
 **Note**: Decoders are now managed internally by TinyBin instances through object pooling for better performance and resource management. Direct creation of decoders is deprecated.
 
@@ -149,9 +149,9 @@ var result MyStruct
 err := tb.Decode(data, &result)
 ```
 
-### Decoder Read Methods
+### decoder Read Methods
 
-The `Decoder` type provides methods for reading primitive types:
+The `decoder` type provides methods for reading primitive types:
 
 - `Read(b []byte) (int, error)` - reads raw bytes
 - `ReadVarint() (int64, error)` - reads a variable-length signed integer
@@ -187,7 +187,7 @@ tb := tinybin.New(func(msg ...any) {
 
 **Complete State Isolation**: Each TinyBin instance maintains its own:
 - Schema cache (slice-based for TinyGo compatibility)
-- Encoder and decoder object pools
+- encoder and decoder object pools
 - Optional logging function
 
 **Thread Safety**: Multiple goroutines can safely use the same instance concurrently without external synchronization.
@@ -291,8 +291,8 @@ For custom types, implement the `Codec` interface:
 
 ```go
 type Codec interface {
-    EncodeTo(*Encoder, tinyreflect.Value) error
-    DecodeTo(*Decoder, tinyreflect.Value) error
+    EncodeTo(*encoder, tinyreflect.Value) error
+    DecodeTo(*decoder, tinyreflect.Value) error
 }
 ```
 

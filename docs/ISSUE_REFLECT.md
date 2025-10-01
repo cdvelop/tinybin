@@ -351,7 +351,7 @@ Tests should be placed in the package that contains the primary functionality be
 #### **Tests to Move from TinyReflect to TinyBin:**
 1. **`decode_test.go`** - Tests decoder scenarios (binary decoding context)
 2. **`exact_decode_test.go`** - Tests specific decoder edge cases (binary decoding context)
-3. **`encoder_type_test.go`** (if exists in tinyreflect) - Encoder context tests
+3. **`encoder_type_test.go`** (if exists in tinyreflect) - encoder context tests
 
 #### **Tests to Keep in Current Location:**
 1. **Integration tests** - Tests that cross package boundaries stay where most relevant

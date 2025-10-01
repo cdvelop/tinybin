@@ -11,7 +11,7 @@ Este documento presenta un análisis detallado del sistema de cache de esquemas 
 TinyBin utiliza un sistema de cache de dos niveles:
 
 1. **Cache Global**: `sync.Map` que persiste durante toda la ejecución de la aplicación
-2. **Cache Local**: Cada instancia de `Encoder`/`Decoder` mantiene su propio mapa de esquemas
+2. **Cache Local**: Cada instancia de `encoder`/`decoder` mantiene su propio mapa de esquemas
 3. **Object Pooling**: Los encoders y decoders son reutilizados junto con sus caches locales
 
 ### Flujo de Funcionamiento
@@ -19,7 +19,7 @@ TinyBin utiliza un sistema de cache de dos niveles:
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Nuevo Tipo    │───▶│  Cache Local     │───▶│  Cache Global   │
-│   de Datos      │    │  (Per-Encoder)   │    │  (Aplicación)   │
+│   de Datos      │    │  (Per-encoder)   │    │  (Aplicación)   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                                 │                        │
                                 ▼                        ▼

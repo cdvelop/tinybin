@@ -9,27 +9,27 @@ import (
 	. "github.com/cdvelop/tinystring"
 )
 
-// Note: Decoder pool is now managed by TinyBin instance
+// Note: decoder pool is now managed by TinyBin instance
 
-// Decoder represents a binary decoder.
-type Decoder struct {
+// decoder represents a binary decoder.
+type decoder struct {
 	reader reader
 	tb     *TinyBin // Reference to the TinyBin instance for schema caching
 }
 
 // NewDecoder creates a binary decoder (deprecated - use TinyBin instance methods).
-func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{
+func NewDecoder(r io.Reader) *decoder {
+	return &decoder{
 		reader: newReader(r),
 	}
 }
 
 // Decode decodes a value by reading from the underlying io.Reader.
-func (d *Decoder) Decode(v any) (err error) {
+func (d *decoder) Decode(v any) (err error) {
 	rv := tinyreflect.Indirect(tinyreflect.ValueOf(v))
 	canAddr := rv.CanAddr()
 	if !canAddr {
-		return Err(D.Binary, "Decoder", D.Required, D.Type, D.Pointer)
+		return Err(D.Binary, "decoder", D.Required, D.Type, D.Pointer)
 	}
 
 	// Scan the type (this will load from cache)
@@ -42,22 +42,22 @@ func (d *Decoder) Decode(v any) (err error) {
 }
 
 // Read reads a set of bytes
-func (d *Decoder) Read(b []byte) (int, error) {
+func (d *decoder) Read(b []byte) (int, error) {
 	return d.reader.Read(b)
 }
 
 // ReadUvarint reads a variable-length Uint64 from the buffer.
-func (d *Decoder) ReadUvarint() (uint64, error) {
+func (d *decoder) ReadUvarint() (uint64, error) {
 	return d.reader.ReadUvarint()
 }
 
 // ReadVarint reads a variable-length Int64 from the buffer.
-func (d *Decoder) ReadVarint() (int64, error) {
+func (d *decoder) ReadVarint() (int64, error) {
 	return d.reader.ReadVarint()
 }
 
 // ReadUint16 reads a uint16
-func (d *Decoder) ReadUint16() (out uint16, err error) {
+func (d *decoder) ReadUint16() (out uint16, err error) {
 	var b []byte
 	if b, err = d.reader.Slice(2); err == nil {
 		_ = b[1] // bounds check hint to compiler
@@ -67,7 +67,7 @@ func (d *Decoder) ReadUint16() (out uint16, err error) {
 }
 
 // ReadUint32 reads a uint32
-func (d *Decoder) ReadUint32() (out uint32, err error) {
+func (d *decoder) ReadUint32() (out uint32, err error) {
 	var b []byte
 	if b, err = d.reader.Slice(4); err == nil {
 		_ = b[3] // bounds check hint to compiler
@@ -77,7 +77,7 @@ func (d *Decoder) ReadUint32() (out uint32, err error) {
 }
 
 // ReadUint64 reads a uint64
-func (d *Decoder) ReadUint64() (out uint64, err error) {
+func (d *decoder) ReadUint64() (out uint64, err error) {
 	var b []byte
 	if b, err = d.reader.Slice(8); err == nil {
 		_ = b[7] // bounds check hint to compiler
@@ -88,7 +88,7 @@ func (d *Decoder) ReadUint64() (out uint64, err error) {
 }
 
 // ReadFloat32 reads a float32
-func (d *Decoder) ReadFloat32() (out float32, err error) {
+func (d *decoder) ReadFloat32() (out float32, err error) {
 	var v uint32
 	if v, err = d.ReadUint32(); err == nil {
 		out = math.Float32frombits(v)
@@ -97,7 +97,7 @@ func (d *Decoder) ReadFloat32() (out float32, err error) {
 }
 
 // ReadFloat64 reads a float64
-func (d *Decoder) ReadFloat64() (out float64, err error) {
+func (d *decoder) ReadFloat64() (out float64, err error) {
 	var v uint64
 	if v, err = d.ReadUint64(); err == nil {
 		out = math.Float64frombits(v)
@@ -106,13 +106,13 @@ func (d *Decoder) ReadFloat64() (out float64, err error) {
 }
 
 // ReadBool reads a single boolean value from the slice.
-func (d *Decoder) ReadBool() (bool, error) {
+func (d *decoder) ReadBool() (bool, error) {
 	b, err := d.reader.ReadByte()
 	return b == 1, err
 }
 
 // ReadString a string prefixed with a variable-size integer size.
-func (d *Decoder) ReadString() (out string, err error) {
+func (d *decoder) ReadString() (out string, err error) {
 	var b []byte
 	if b, err = d.ReadSlice(); err == nil {
 		out = string(b)
@@ -121,13 +121,13 @@ func (d *Decoder) ReadString() (out string, err error) {
 }
 
 // ReadComplex reads a complex64
-func (d *Decoder) readComplex64() (out complex64, err error) {
+func (d *decoder) readComplex64() (out complex64, err error) {
 	err = binary.Read(d.reader, binary.LittleEndian, &out)
 	return
 }
 
 // ReadComplex reads a complex128
-func (d *Decoder) readComplex128() (out complex128, err error) {
+func (d *decoder) readComplex128() (out complex128, err error) {
 	err = binary.Read(d.reader, binary.LittleEndian, &out)
 	return
 }
@@ -136,13 +136,13 @@ func (d *Decoder) readComplex128() (out complex128, err error) {
 // actually perform a copy, but simply uses the underlying slice (if available) and
 // returns a sub-slice pointing to the same array. Since this requires access
 // to the underlying data, this is only available for a slice reader.
-func (d *Decoder) Slice(n int) ([]byte, error) {
+func (d *decoder) Slice(n int) ([]byte, error) {
 	return d.reader.Slice(n)
 }
 
 // ReadSlice reads a varint prefixed sub-slice without copying and returns the underlying
 // byte slice.
-func (d *Decoder) ReadSlice() (b []byte, err error) {
+func (d *decoder) ReadSlice() (b []byte, err error) {
 	var l uint64
 	if l, err = d.ReadUvarint(); err == nil {
 		b, err = d.Slice(int(l))
@@ -151,7 +151,7 @@ func (d *Decoder) ReadSlice() (b []byte, err error) {
 }
 
 // Reset resets the decoder and makes it ready to be reused.
-func (d *Decoder) Reset(data []byte, tb *TinyBin) {
+func (d *decoder) Reset(data []byte, tb *TinyBin) {
 	if d.reader == nil {
 		d.reader = newSliceReader(data)
 	} else {
@@ -161,9 +161,9 @@ func (d *Decoder) Reset(data []byte, tb *TinyBin) {
 }
 
 // scanToCache scans the type and caches it in the TinyBin instance
-func (d *Decoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
+func (d *decoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
 	if d.tb == nil {
-		return nil, Err("Decoder", "scanToCache", "TinyBin", "nil")
+		return nil, Err("decoder", "scanToCache", "TinyBin", "nil")
 	}
 
 	// Use the TinyBin instance's schema caching mechanism

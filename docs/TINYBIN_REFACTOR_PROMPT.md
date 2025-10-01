@@ -105,8 +105,8 @@ func New(args ...any) *TinyBin {
     return &TinyBin{
         log:      logFunc,
         schemas:  make([]schemaEntry, 0, 100), // Pre-allocate reasonable size
-        encoders: &sync.Pool{New: func() any { return &Encoder{} }},
-        decoders: &sync.Pool{New: func() any { return &Decoder{} }},
+        encoders: &sync.Pool{New: func() any { return &encoder{} }},
+        decoders: &sync.Pool{New: func() any { return &decoder{} }},
     }
 }
 ```

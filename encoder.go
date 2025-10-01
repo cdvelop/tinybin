@@ -8,10 +8,10 @@ import (
 	. "github.com/cdvelop/tinystring"
 )
 
-// Note: Encoder pool is now managed by TinyBin instance
+// Note: encoder pool is now managed by TinyBin instance
 
-// Encoder represents a binary encoder.
-type Encoder struct {
+// encoder represents a binary encoder.
+type encoder struct {
 	scratch [10]byte
 	tb      *TinyBin // Reference to the TinyBin instance for schema caching
 	out     io.Writer
@@ -19,26 +19,26 @@ type Encoder struct {
 }
 
 // NewEncoder creates a new encoder (deprecated - use TinyBin instance methods).
-func NewEncoder(out io.Writer) *Encoder {
-	return &Encoder{
+func NewEncoder(out io.Writer) *encoder {
+	return &encoder{
 		out: out,
 	}
 }
 
 // Reset resets the encoder and makes it ready to be reused.
-func (e *Encoder) Reset(out io.Writer, tb *TinyBin) {
+func (e *encoder) Reset(out io.Writer, tb *TinyBin) {
 	e.out = out
 	e.err = nil
 	e.tb = tb
 }
 
 // Buffer returns the underlying writer.
-func (e *Encoder) Buffer() io.Writer {
+func (e *encoder) Buffer() io.Writer {
 	return e.out
 }
 
 // Encode encodes the value to the binary format.
-func (e *Encoder) Encode(v any) (err error) {
+func (e *encoder) Encode(v any) (err error) {
 
 	// Scan the type (this will load from cache)
 	rv := tinyreflect.Indirect(tinyreflect.ValueOf(v))
@@ -60,14 +60,14 @@ func (e *Encoder) Encode(v any) (err error) {
 }
 
 // Write writes the contents of p into the buffer.
-func (e *Encoder) Write(p []byte) {
+func (e *encoder) Write(p []byte) {
 	if e.err == nil {
 		_, e.err = e.out.Write(p)
 	}
 }
 
 // WriteVarint writes a variable size integer
-func (e *Encoder) WriteVarint(v int64) {
+func (e *encoder) WriteVarint(v int64) {
 	x := uint64(v) << 1
 	if v < 0 {
 		x = ^x
@@ -84,7 +84,7 @@ func (e *Encoder) WriteVarint(v int64) {
 }
 
 // WriteUvarint writes a variable size unsigned integer
-func (e *Encoder) WriteUvarint(x uint64) {
+func (e *encoder) WriteUvarint(x uint64) {
 	i := 0
 	for x >= 0x80 {
 		e.scratch[i] = byte(x) | 0x80
@@ -96,14 +96,14 @@ func (e *Encoder) WriteUvarint(x uint64) {
 }
 
 // WriteUint16 writes a Uint16
-func (e *Encoder) WriteUint16(v uint16) {
+func (e *encoder) WriteUint16(v uint16) {
 	e.scratch[0] = byte(v)
 	e.scratch[1] = byte(v >> 8)
 	e.Write(e.scratch[:2])
 }
 
 // WriteUint32 writes a Uint32
-func (e *Encoder) WriteUint32(v uint32) {
+func (e *encoder) WriteUint32(v uint32) {
 	e.scratch[0] = byte(v)
 	e.scratch[1] = byte(v >> 8)
 	e.scratch[2] = byte(v >> 16)
@@ -112,7 +112,7 @@ func (e *Encoder) WriteUint32(v uint32) {
 }
 
 // WriteUint64 writes a Uint64
-func (e *Encoder) WriteUint64(v uint64) {
+func (e *encoder) WriteUint64(v uint64) {
 	e.scratch[0] = byte(v)
 	e.scratch[1] = byte(v >> 8)
 	e.scratch[2] = byte(v >> 16)
@@ -125,17 +125,17 @@ func (e *Encoder) WriteUint64(v uint64) {
 }
 
 // WriteFloat32 a 32-bit floating point number
-func (e *Encoder) WriteFloat32(v float32) {
+func (e *encoder) WriteFloat32(v float32) {
 	e.WriteUint32(math.Float32bits(v))
 }
 
 // WriteFloat64 a 64-bit floating point number
-func (e *Encoder) WriteFloat64(v float64) {
+func (e *encoder) WriteFloat64(v float64) {
 	e.WriteUint64(math.Float64bits(v))
 }
 
 // WriteBool writes a single boolean value into the buffer
-func (e *Encoder) writeBool(v bool) {
+func (e *encoder) writeBool(v bool) {
 	e.scratch[0] = 0
 	if v {
 		e.scratch[0] = 1
@@ -144,15 +144,15 @@ func (e *Encoder) writeBool(v bool) {
 }
 
 // WriteString writes a string prefixed with a variable-size integer size.
-func (e *Encoder) WriteString(v string) {
+func (e *encoder) WriteString(v string) {
 	e.WriteUvarint(uint64(len(v)))
 	e.Write(ToBytes(v))
 }
 
 // scanToCache scans the type and caches it in the TinyBin instance
-func (e *Encoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
+func (e *encoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
 	if e.tb == nil {
-		return nil, Err("Encoder", "scanToCache", "TinyBin", "nil")
+		return nil, Err("encoder", "scanToCache", "TinyBin", "nil")
 	}
 
 	// Use the TinyBin instance's schema caching mechanism

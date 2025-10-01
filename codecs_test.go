@@ -216,16 +216,14 @@ func TestStructWithStruct(t *testing.T) {
 	}
 
 	s := Struct{V1: T1{1, "1", []int{1}}, V2: 2, V3: T1{3, "3", []int{3}}}
-	buf := new(bytes.Buffer)
-	enc := NewEncoder(buf)
-	err := enc.Encode(&s)
+	tb := New()
+	data, err := tb.Encode(&s)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
 
 	v := Struct{}
-	dec := NewDecoder(buf)
-	err = dec.Decode(&v)
+	err = tb.Decode(data, &v)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
@@ -250,16 +248,14 @@ func TestStructWithEmbeddedStruct(t *testing.T) {
 	}
 
 	s := Struct{T1: T1{1, "1", []int{1}}, V2: 2, V3: T1{3, "3", []int{3}}}
-	buf := new(bytes.Buffer)
-	enc := NewEncoder(buf)
-	err := enc.Encode(&s)
+	tb := New()
+	data, err := tb.Encode(&s)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
 
 	v := Struct{}
-	dec := NewDecoder(buf)
-	err = dec.Decode(&v)
+	err = tb.Decode(data, &v)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
@@ -286,16 +282,14 @@ func TestArrayOfStructWithStruct(t *testing.T) {
 	s := [1]Struct{
 		{V1: T1{1, "1", []int{1}}, V2: 2, V3: T1{3, "3", []int{3}}},
 	}
-	buf := new(bytes.Buffer)
-	enc := NewEncoder(buf)
-	err := enc.Encode(&s)
+	tb := New()
+	data, err := tb.Encode(&s)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
 
 	v := [1]Struct{}
-	dec := NewDecoder(buf)
-	err = dec.Decode(&v)
+	err = tb.Decode(data, &v)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
@@ -322,16 +316,14 @@ func TestSliceOfStructWithStruct(t *testing.T) {
 	s := []Struct{
 		{V1: T1{1, "1", []int{1}}, V2: 2, V3: T1{3, "3", []int{3}}},
 	}
-	buf := new(bytes.Buffer)
-	enc := NewEncoder(buf)
-	err := enc.Encode(&s)
+	tb := New()
+	data, err := tb.Encode(&s)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}
 
 	v := []Struct{}
-	dec := NewDecoder(buf)
-	err = dec.Decode(&v)
+	err = tb.Decode(data, &v)
 	if err != nil {
 		t.Fatalf("error: %v\n", err)
 	}

@@ -23,8 +23,8 @@ type sliceHeader struct {
 
 // Codec represents a single part Codec, which can encode and decode something.
 type Codec interface {
-	EncodeTo(*Encoder, tinyreflect.Value) error
-	DecodeTo(*Decoder, tinyreflect.Value) error
+	EncodeTo(*encoder, tinyreflect.Value) error
+	DecodeTo(*decoder, tinyreflect.Value) error
 }
 
 // ------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ type reflectArrayCodec struct {
 }
 
 // Encode encodes a value into the encoder.
-func (c *reflectArrayCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) {
+func (c *reflectArrayCodec) EncodeTo(e *encoder, rv tinyreflect.Value) (err error) {
 	l, err := rv.Len()
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (c *reflectArrayCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err erro
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *reflectArrayCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *reflectArrayCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	l, err := rv.Len()
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ type reflectSliceCodec struct {
 }
 
 // Encode encodes a value into the encoder.
-func (c *reflectSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) {
+func (c *reflectSliceCodec) EncodeTo(e *encoder, rv tinyreflect.Value) (err error) {
 	l, err := rv.Len()
 	if err != nil {
 		return err
@@ -99,7 +99,7 @@ func (c *reflectSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err erro
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *reflectSliceCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *reflectSliceCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var l uint64
 	if l, err = d.ReadUvarint(); err == nil && l > 0 {
 		// Debug: log the length read
@@ -145,7 +145,7 @@ type reflectSliceOfPtrCodec struct {
 }
 
 // Encode encodes a value into the encoder.
-func (c *reflectSliceOfPtrCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) {
+func (c *reflectSliceOfPtrCodec) EncodeTo(e *encoder, rv tinyreflect.Value) (err error) {
 	l, err := rv.Len()
 	if err != nil {
 		return err
@@ -172,7 +172,7 @@ func (c *reflectSliceOfPtrCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *reflectSliceOfPtrCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *reflectSliceOfPtrCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var l uint64
 	var isNil bool
 	if l, err = d.ReadUvarint(); err == nil && l > 0 {
@@ -224,7 +224,7 @@ func (c *reflectSliceOfPtrCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err
 type byteSliceCodec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *byteSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) {
+func (c *byteSliceCodec) EncodeTo(e *encoder, rv tinyreflect.Value) (err error) {
 	// Get the slice length
 	l, err := rv.Len()
 	if err != nil {
@@ -252,7 +252,7 @@ func (c *byteSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) 
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *byteSliceCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *byteSliceCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var l uint64
 	if l, err = d.ReadUvarint(); err == nil && l > 0 {
 		data := make([]byte, int(l))
@@ -288,7 +288,7 @@ func (c *byteSliceCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) 
 type boolSliceCodec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *boolSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) {
+func (c *boolSliceCodec) EncodeTo(e *encoder, rv tinyreflect.Value) (err error) {
 	l, err := rv.Len()
 	if err != nil {
 		return err
@@ -304,7 +304,7 @@ func (c *boolSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) 
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *boolSliceCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *boolSliceCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var l uint64
 	if l, err = d.ReadUvarint(); err == nil && l > 0 {
 		buf := make([]byte, l)
@@ -328,7 +328,7 @@ func (c *boolSliceCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) 
 type varintSliceCodec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *varintSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) {
+func (c *varintSliceCodec) EncodeTo(e *encoder, rv tinyreflect.Value) (err error) {
 	l, err := rv.Len()
 	if err != nil {
 		return err
@@ -349,7 +349,7 @@ func (c *varintSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *varintSliceCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *varintSliceCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var l uint64
 	if l, err = d.ReadUvarint(); err == nil && l > 0 {
 		typ := rv.Type()
@@ -381,7 +381,7 @@ func (c *varintSliceCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error
 type varuintSliceCodec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *varuintSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) {
+func (c *varuintSliceCodec) EncodeTo(e *encoder, rv tinyreflect.Value) (err error) {
 	l, err := rv.Len()
 	if err != nil {
 		return err
@@ -402,7 +402,7 @@ func (c *varuintSliceCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err erro
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *varuintSliceCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *varuintSliceCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var l, v uint64
 	if l, err = d.ReadUvarint(); err == nil && l > 0 {
 		typ := rv.Type()
@@ -435,7 +435,7 @@ type reflectPointerCodec struct {
 }
 
 // Encode encodes a value into the encoder.
-func (c *reflectPointerCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) {
+func (c *reflectPointerCodec) EncodeTo(e *encoder, rv tinyreflect.Value) (err error) {
 	isNil, err := rv.IsNil()
 	if err != nil {
 		return err
@@ -458,7 +458,7 @@ func (c *reflectPointerCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err er
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *reflectPointerCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *reflectPointerCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	isNil, err := d.ReadBool()
 	if err != nil {
 		return err
@@ -503,7 +503,7 @@ type fieldCodec struct {
 }
 
 // Encode encodes a value into the encoder.
-func (c reflectStructCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err error) {
+func (c reflectStructCodec) EncodeTo(e *encoder, rv tinyreflect.Value) (err error) {
 	for _, i := range c {
 		field, err := rv.Field(i.Index)
 		if err != nil {
@@ -517,7 +517,7 @@ func (c reflectStructCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) (err erro
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c reflectStructCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c reflectStructCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	for _, fieldCodec := range c {
 		v, err := rv.Field(fieldCodec.Index)
 		if err != nil {
@@ -553,14 +553,14 @@ func (c reflectStructCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err erro
 type stringCodec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *stringCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
+func (c *stringCodec) EncodeTo(e *encoder, rv tinyreflect.Value) error {
 	s := rv.String()
 	e.WriteString(s)
 	return nil
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *stringCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *stringCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var s string
 	if s, err = d.ReadString(); err == nil {
 		if err = rv.SetString(s); err != nil {
@@ -575,7 +575,7 @@ func (c *stringCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
 type boolCodec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *boolCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
+func (c *boolCodec) EncodeTo(e *encoder, rv tinyreflect.Value) error {
 	boolVal, err := rv.Bool()
 	if err != nil {
 		return err
@@ -585,7 +585,7 @@ func (c *boolCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *boolCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *boolCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var out bool
 	if out, err = d.ReadBool(); err == nil {
 		if err = rv.SetBool(out); err != nil {
@@ -600,7 +600,7 @@ func (c *boolCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
 type varintCodec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *varintCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
+func (c *varintCodec) EncodeTo(e *encoder, rv tinyreflect.Value) error {
 	intVal, err := rv.Int()
 	if err != nil {
 		return err
@@ -610,7 +610,7 @@ func (c *varintCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *varintCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *varintCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var v int64
 	if v, err = d.ReadVarint(); err != nil {
 		return err
@@ -626,7 +626,7 @@ func (c *varintCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
 type varuintCodec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *varuintCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
+func (c *varuintCodec) EncodeTo(e *encoder, rv tinyreflect.Value) error {
 	uintVal, err := rv.Uint()
 	if err != nil {
 		return err
@@ -636,7 +636,7 @@ func (c *varuintCodec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *varuintCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *varuintCodec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var v uint64
 	if v, err = d.ReadUvarint(); err != nil {
 		return err
@@ -652,7 +652,7 @@ func (c *varuintCodec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
 type float32Codec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *float32Codec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
+func (c *float32Codec) EncodeTo(e *encoder, rv tinyreflect.Value) error {
 	floatVal, err := rv.Float()
 	if err != nil {
 		return err
@@ -662,7 +662,7 @@ func (c *float32Codec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *float32Codec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *float32Codec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var v float32
 	if v, err = d.ReadFloat32(); err == nil {
 		if err = rv.SetFloat(float64(v)); err != nil {
@@ -677,7 +677,7 @@ func (c *float32Codec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
 type float64Codec struct{}
 
 // Encode encodes a value into the encoder.
-func (c *float64Codec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
+func (c *float64Codec) EncodeTo(e *encoder, rv tinyreflect.Value) error {
 	floatVal, err := rv.Float()
 	if err != nil {
 		return err
@@ -687,7 +687,7 @@ func (c *float64Codec) EncodeTo(e *Encoder, rv tinyreflect.Value) error {
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *float64Codec) DecodeTo(d *Decoder, rv tinyreflect.Value) (err error) {
+func (c *float64Codec) DecodeTo(d *decoder, rv tinyreflect.Value) (err error) {
 	var v float64
 	if v, err = d.ReadFloat64(); err == nil {
 		if err = rv.SetFloat(v); err != nil {

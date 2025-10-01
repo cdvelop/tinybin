@@ -54,14 +54,14 @@ func New(args ...any) *TinyBin {
 		schemas: make([]schemaEntry, 0, 100), // Pre-allocate reasonable size
 		encoders: &sync.Pool{
 			New: func() any {
-				return &Encoder{
+				return &encoder{
 					tb: nil, // Will be set when borrowed from pool
 				}
 			},
 		},
 		decoders: &sync.Pool{
 			New: func() any {
-				return &Decoder{
+				return &decoder{
 					tb: nil, // Will be set when borrowed from pool
 				}
 			},
@@ -85,7 +85,7 @@ func (tb *TinyBin) Encode(data any) ([]byte, error) {
 // EncodeTo encodes the payload into a specific destination using this TinyBin instance.
 func (tb *TinyBin) EncodeTo(data any, dst io.Writer) error {
 	// Get the encoder from the pool, reset it
-	e := tb.encoders.Get().(*Encoder)
+	e := tb.encoders.Get().(*encoder)
 	e.Reset(dst, tb)
 
 	// Encode and set the buffer if successful
@@ -99,7 +99,7 @@ func (tb *TinyBin) EncodeTo(data any, dst io.Writer) error {
 // Decode decodes the payload from the binary format using this TinyBin instance.
 func (tb *TinyBin) Decode(data []byte, target any) error {
 	// Get the decoder from the pool, reset it
-	d := tb.decoders.Get().(*Decoder)
+	d := tb.decoders.Get().(*decoder)
 	d.Reset(data, tb)
 
 	// Decode and free the decoder

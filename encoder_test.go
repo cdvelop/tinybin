@@ -128,7 +128,7 @@ func TestBinaryEncodeStruct(t *testing.T) {
 }
 
 func TestEncoderSizeOf(t *testing.T) {
-	var e Encoder
+	var e encoder
 	size := int(unsafe.Sizeof(e))
 	if size != 56 {
 		t.Errorf("Expected %v, got %v", 56, size)

@@ -188,7 +188,7 @@ func ProcesarConJSON(data interface{}) ([]byte, error) {
 // ✅ Múltiples instancias para diferentes protocolos
 type MultiProtocolSerializer struct {
     tinybinInstance *tinybin.TinyBin
-    jsonInstance    *json.Encoder
+    jsonInstance    *json.encoder
     customProtocol  *custom.Protocol
 }
 
@@ -238,8 +238,8 @@ func New(config Config) *TinyBin {
 
     return &TinyBin{
         schemas:  NewBoundedCache(config.MaxCacheSize),
-        encoders: &sync.Pool{New: func() any { return &Encoder{} }},
-        decoders: &sync.Pool{New: func() any { return &Decoder{} }},
+        encoders: &sync.Pool{New: func() any { return &encoder{} }},
+        decoders: &sync.Pool{New: func() any { return &decoder{} }},
         config:   config,
     }
 }
@@ -395,8 +395,8 @@ func New(config ...Config) *TinyBin {
 
     tb := &TinyBin{
         schemas:  NewCache(cfg.MaxCacheSize, cfg.CacheTTL),
-        encoders: &sync.Pool{New: func() any { return &Encoder{} }},
-        decoders: &sync.Pool{New: func() any { return &Decoder{} }},
+        encoders: &sync.Pool{New: func() any { return &encoder{} }},
+        decoders: &sync.Pool{New: func() any { return &decoder{} }},
         config:   cfg,
         metrics:  &Metrics{},
     }
@@ -539,8 +539,8 @@ func TestConTinyBin(t *testing.T) {
 func New() *TinyBin {
     return &TinyBin{
         schemas:  make([]schemaEntry, 0), // Slice en lugar de map
-        encoders: &sync.Pool{New: func() any { return &Encoder{} }},
-        decoders: &sync.Pool{New: func() any { return &Decoder{} }},
+        encoders: &sync.Pool{New: func() any { return &encoder{} }},
+        decoders: &sync.Pool{New: func() any { return &decoder{} }},
     }
 }
 ```
@@ -639,8 +639,8 @@ func NewForTinyGo() *TinyBin {
     return &TinyBin{
         schemas:  make([]schemaEntry, 0, 50), // Pre-allocar para 50 tipos
         maxSize:  100,                        // Límite razonable
-        encoders: &sync.Pool{New: func() any { return &Encoder{} }},
-        decoders: &sync.Pool{New: func() any { return &Decoder{} }},
+        encoders: &sync.Pool{New: func() any { return &encoder{} }},
+        decoders: &sync.Pool{New: func() any { return &decoder{} }},
     }
 }
 ```
