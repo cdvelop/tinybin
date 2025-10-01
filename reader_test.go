@@ -1,8 +1,6 @@
 package tinybin
 
 import (
-	"bytes"
-	"io"
 	"testing"
 )
 
@@ -149,19 +147,3 @@ func TestReader_Slice(t *testing.T) {
 // 		Value:     child,
 // 	}
 // }
-
-// --------------------------------------- Fake Network Reader ---------------------------------------
-
-type networkSource struct {
-	r io.Reader
-}
-
-func newNetworkSource(data []byte) io.Reader {
-	return &networkSource{
-		r: bytes.NewBuffer(data),
-	}
-}
-
-func (s *networkSource) Read(p []byte) (n int, err error) {
-	return s.r.Read(p)
-}

@@ -15,30 +15,6 @@ var testMsg = msg{
 	Ssid:      []uint32{1, 2, 3},
 }
 
-type composite map[string]column
-
-type column struct {
-	Varchar columnVarchar
-	Float64 columnFloat64
-	Float32 columnFloat32
-}
-
-type columnVarchar struct {
-	Nulls []bool
-	Sizes []uint32
-	Bytes []byte
-}
-
-type columnFloat64 struct {
-	Nulls  []bool
-	Floats []float64
-}
-
-type columnFloat32 struct {
-	Nulls  []bool
-	Floats []float32
-}
-
 // Test_Full removed - uses map[string]column which is not supported
 // Maps are intentionally not supported in TinyBin for WebAssembly optimization
 // Use slice of structs instead: []struct{Key string; Value column}
@@ -78,24 +54,6 @@ func Test_Full(t *testing.T) {
 	}
 }
 */
-
-func newComposite() composite {
-	v := composite{}
-	v["a"] = column{
-		Varchar: columnVarchar{
-			Nulls: []bool{false, false, false, true, false, false, false, false, true, false, false, false, false, true, false},
-			Sizes: []uint32{2, 2, 2, 0, 2, 2, 2, 2, 0, 2, 2, 2, 2, 0, 2, 2, 2, 2, 0, 2, 2, 2, 2, 0, 2, 2, 2, 2, 0, 2},
-			Bytes: []byte{10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10},
-		},
-	}
-	v["b"] = column{
-		Float64: columnFloat64{
-			Nulls:  []bool{false, false, false, true, false},
-			Floats: []float64{1.1, 2.2, 3.3, 0, 4.4},
-		},
-	}
-	return v
-}
 
 /*
 cpu: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
