@@ -34,39 +34,36 @@ type schemaEntry struct {
 // New creates a new TinyBin instance with optional configuration.
 // The first argument can be an optional logging function.
 // If no logging function is provided, a no-op logger is used.
-func New(args ...any) *TinyBin {
-	var logFunc func(msg ...any)
+// eg: tb := tinybin.New(func(msg ...any) { fmt.Println(msg...) })
 
-	// Check if logging function is provided
-	if len(args) > 0 {
-		if log, ok := args[0].(func(msg ...any)); ok {
+func New(args ...any) *TinyBin {
+	var logFunc func(msg ...any) // Default: no logging
+
+	for _, arg := range args {
+		if log, ok := arg.(func(msg ...any)); ok {
 			logFunc = log
 		}
 	}
 
-	// Default: no logging
-	if logFunc == nil {
-		logFunc = func(msg ...any) {} // No-op logger
+	tb := &TinyBin{log: logFunc}
+
+	tb.schemas = make([]schemaEntry, 0, 100) // Pre-allocate reasonable size
+	tb.encoders = &sync.Pool{
+		New: func() any {
+			return &encoder{
+				tb: tb,
+			}
+		},
+	}
+	tb.decoders = &sync.Pool{
+		New: func() any {
+			return &decoder{
+				tb: tb,
+			}
+		},
 	}
 
-	return &TinyBin{
-		log:     logFunc,
-		schemas: make([]schemaEntry, 0, 100), // Pre-allocate reasonable size
-		encoders: &sync.Pool{
-			New: func() any {
-				return &encoder{
-					tb: nil, // Will be set when borrowed from pool
-				}
-			},
-		},
-		decoders: &sync.Pool{
-			New: func() any {
-				return &decoder{
-					tb: nil, // Will be set when borrowed from pool
-				}
-			},
-		},
-	}
+	return tb
 }
 
 // Encode encodes the payload into binary format using this TinyBin instance.
@@ -130,12 +127,6 @@ func (tb *TinyBin) addSchema(typeID uint32, codec Codec) {
 		TypeID: typeID,
 		Codec:  codec,
 	})
-}
-
-// cleanupCache removes expired entries based on TTL (future enhancement)
-func (tb *TinyBin) cleanupCache() {
-	// TODO: Implement TTL-based cleanup if needed
-	// For now, we rely on simple size-based eviction
 }
 
 // scanToCache scans the type and caches it in the TinyBin instance using slice-based cache

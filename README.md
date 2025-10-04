@@ -276,14 +276,6 @@ TinyBin automatically handles encoding and decoding for the following types:
   var nilPtr *MyStruct = nil          // → [1]
   ```
 
-## Endianness
-
-The library provides predefined endianness constants:
-
-```go
-tinybin.LittleEndian  // Little-endian byte order
-tinybin.BigEndian     // Big-endian byte order
-```
 
 ## Codec Interface
 

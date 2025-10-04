@@ -1,7 +1,6 @@
 package tinybin
 
 import (
-	"encoding/binary"
 	"io"
 	"math"
 
@@ -117,18 +116,6 @@ func (d *decoder) ReadString() (out string, err error) {
 	if b, err = d.ReadSlice(); err == nil {
 		out = string(b)
 	}
-	return
-}
-
-// ReadComplex reads a complex64
-func (d *decoder) readComplex64() (out complex64, err error) {
-	err = binary.Read(d.reader, binary.LittleEndian, &out)
-	return
-}
-
-// ReadComplex reads a complex128
-func (d *decoder) readComplex128() (out complex128, err error) {
-	err = binary.Read(d.reader, binary.LittleEndian, &out)
 	return
 }
 

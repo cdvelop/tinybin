@@ -1,25 +1,9 @@
 package tinybin
 
 import (
-	"encoding/binary"
-	"unsafe"
-
 	"github.com/cdvelop/tinyreflect"
 	. "github.com/cdvelop/tinystring"
 )
-
-// Constants
-var (
-	LittleEndian = binary.LittleEndian
-	BigEndian    = binary.BigEndian
-)
-
-// sliceHeader is the runtime representation of a slice.
-type sliceHeader struct {
-	Data unsafe.Pointer
-	Len  int
-	Cap  int
-}
 
 // Codec represents a single part Codec, which can encode and decode something.
 type Codec interface {
