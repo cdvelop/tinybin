@@ -2,7 +2,6 @@ package tinybin
 
 import (
 	"encoding"
-	"fmt"
 	"reflect"
 
 	. "github.com/cdvelop/tinystring"
@@ -43,52 +42,45 @@ func (c *reflectArrayCodec) EncodeTo(e *encoder, rv reflect.Value) (err error) {
 type binaryMarshalerCodec struct{}
 
 func (c *binaryMarshalerCodec) EncodeTo(e *encoder, rv reflect.Value) error {
+	// If this is a nil pointer, encode as zero-length payload
 	if rv.Kind() == reflect.Ptr && rv.IsNil() {
-		e.writeBool(true)
+		e.WriteUvarint(0)
 		return nil
 	}
 
+	// Ensure we have a value that implements BinaryMarshaler (addr if needed)
 	m, ok := rv.Interface().(encoding.BinaryMarshaler)
 	if !ok {
 		if !rv.CanAddr() {
-			return fmt.Errorf("value of type %s is not addressable and does not implement encoding.BinaryMarshaler", rv.Type())
+			return Errf("value of type %s is not addressable and does not implement encoding.BinaryMarshaler", rv.Type())
 		}
 		rv = rv.Addr()
 		m, ok = rv.Interface().(encoding.BinaryMarshaler)
 		if !ok {
-			return fmt.Errorf("value of type %s does not implement encoding.BinaryMarshaler", rv.Type())
+			return Errf("value of type %s does not implement encoding.BinaryMarshaler", rv.Type())
 		}
 	}
 
-	e.writeBool(false)
 	b, err := m.MarshalBinary()
 	if err != nil {
 		return err
 	}
 
 	e.WriteUvarint(uint64(len(b)))
-	e.Write(b)
+	if len(b) > 0 {
+		e.Write(b)
+	}
 	return nil
 }
 
 func (c *binaryMarshalerCodec) DecodeTo(d *decoder, rv reflect.Value) error {
-	isNil, err := d.ReadBool()
-	if err != nil {
-		return err
-	}
-
-	if isNil {
-		if rv.CanSet() {
-			rv.Set(reflect.Zero(rv.Type()))
-		}
-		return nil
-	}
-
-	var b []byte
+	// Read length-prefixed payload and pass to UnmarshalBinary
 	l, err := d.ReadUvarint()
 	if err != nil {
 		return err
 	}
+
+	var b []byte
 	if l > 0 {
 		b = make([]byte, int(l))
 		if _, err = d.Read(b); err != nil {
@@ -96,9 +88,10 @@ func (c *binaryMarshalerCodec) DecodeTo(d *decoder, rv reflect.Value) error {
 		}
 	}
 
+	// Ensure we have an addressable value that implements BinaryUnmarshaler
 	if rv.Kind() != reflect.Ptr {
 		if !rv.CanAddr() {
-			return fmt.Errorf("cannot unmarshal into non-addressable value of type %s", rv.Type())
+			return Errf("cannot unmarshal into non-addressable value of type %s", rv.Type())
 		}
 		rv = rv.Addr()
 	}
@@ -109,7 +102,7 @@ func (c *binaryMarshalerCodec) DecodeTo(d *decoder, rv reflect.Value) error {
 
 	u, ok := rv.Interface().(encoding.BinaryUnmarshaler)
 	if !ok {
-		return fmt.Errorf("value of type %s does not implement encoding.BinaryUnmarshaler", rv.Type())
+		return Errf("value of type %s does not implement encoding.BinaryUnmarshaler", rv.Type())
 	}
 
 	return u.UnmarshalBinary(b)
