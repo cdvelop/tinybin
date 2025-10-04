@@ -1,4 +1,0 @@
-
-[2025-10-01 10:26:36] Watch updating file error: compileSync build failed: exit status 1 # command-line-arguments
-../main.wasm.go:23:2: declared and not used: tb
-

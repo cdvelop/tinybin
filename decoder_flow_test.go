@@ -1,9 +1,8 @@
 package tinybin
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
 )
 
 func TestDecoderFullFlow(t *testing.T) {
@@ -17,8 +16,8 @@ func TestDecoderFullFlow(t *testing.T) {
 
 	s := &simpleStruct{}
 
-	// decoder.go line 46: rv := tinyreflect.Indirect(tinyreflect.ValueOf(v))
-	rv := tinyreflect.Indirect(tinyreflect.ValueOf(s))
+	// decoder.go line 46: rv := reflect.Indirect(reflect.ValueOf(v))
+	rv := reflect.Indirect(reflect.ValueOf(s))
 
 	// Check CanAddr
 	canAddr := rv.CanAddr()
@@ -32,10 +31,10 @@ func TestDecoderFullFlow(t *testing.T) {
 		t.Fatal("rv.Type() returned nil - this is the problem!")
 	}
 
-	t.Logf("rv.Type() = %p, Kind: %v", typ, typ.Kind())
+	t.Logf("rv.Type() = %v, Kind: %v", typ, typ.Kind())
 
 	// Create a mock cache like in decoder
-	cache := make(map[*tinyreflect.Type]Codec)
+	cache := make(map[reflect.Type]Codec)
 
 	// decoder.go line 52: scanToCache(rv.Type(), d.schemas)
 	codec, err := scanToCache(typ, cache)

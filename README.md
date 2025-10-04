@@ -283,8 +283,8 @@ For custom types, implement the `Codec` interface:
 
 ```go
 type Codec interface {
-    EncodeTo(*encoder, tinyreflect.Value) error
-    DecodeTo(*decoder, tinyreflect.Value) error
+    EncodeTo(*encoder, reflect.Value) error
+    DecodeTo(*decoder, reflect.Value) error
 }
 ```
 
@@ -444,7 +444,6 @@ func TestMyFunction(t *testing.T) {
 
 ## Dependencies
 
-- [`github.com/cdvelop/tinyreflect`](https://github.com/cdvelop/tinyreflect) - Reflection utilities for TinyGo
 - [`github.com/cdvelop/tinystring`](https://github.com/cdvelop/tinystring) - String utilities
 
 ## License

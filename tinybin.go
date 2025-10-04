@@ -3,9 +3,9 @@ package tinybin
 import (
 	"bytes"
 	"io"
+	"reflect"
 	"sync"
 
-	"github.com/cdvelop/tinyreflect"
 	. "github.com/cdvelop/tinystring"
 )
 
@@ -23,12 +23,15 @@ type TinyBin struct {
 
 	// decoders is a private pool for decoder instances
 	decoders *sync.Pool
+
+	// Mutex to protect schemas slice
+	mu sync.RWMutex
 }
 
-// schemaEntry represents a cached schema with its type ID and codec
+// schemaEntry represents a cached schema with its type and codec
 type schemaEntry struct {
-	TypeID uint32 // From tinyreflect.StructID()
-	Codec  Codec
+	Type  reflect.Type
+	Codec Codec
 }
 
 // New creates a new TinyBin instance with optional configuration.
@@ -106,9 +109,11 @@ func (tb *TinyBin) Decode(data []byte, target any) error {
 }
 
 // findSchema performs a linear search in the slice-based cache for TinyGo compatibility
-func (tb *TinyBin) findSchema(typeID uint32) (Codec, bool) {
+func (tb *TinyBin) findSchema(t reflect.Type) (Codec, bool) {
+	tb.mu.RLock()
+	defer tb.mu.RUnlock()
 	for _, entry := range tb.schemas {
-		if entry.TypeID == typeID {
+		if entry.Type == t {
 			return entry.Codec, true
 		}
 	}
@@ -116,7 +121,9 @@ func (tb *TinyBin) findSchema(typeID uint32) (Codec, bool) {
 }
 
 // addSchema adds a new schema to the slice-based cache
-func (tb *TinyBin) addSchema(typeID uint32, codec Codec) {
+func (tb *TinyBin) addSchema(t reflect.Type, codec Codec) {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
 	// Simple cache size limit (optional, for memory control)
 	if len(tb.schemas) >= 1000 { // Reasonable default limit
 		// Simple eviction: remove oldest (first) entry
@@ -124,22 +131,19 @@ func (tb *TinyBin) addSchema(typeID uint32, codec Codec) {
 	}
 
 	tb.schemas = append(tb.schemas, schemaEntry{
-		TypeID: typeID,
-		Codec:  codec,
+		Type:  t,
+		Codec: codec,
 	})
 }
 
 // scanToCache scans the type and caches it in the TinyBin instance using slice-based cache
-func (tb *TinyBin) scanToCache(t *tinyreflect.Type) (Codec, error) {
+func (tb *TinyBin) scanToCache(t reflect.Type) (Codec, error) {
 	if t == nil {
 		return nil, Err("scanToCache", "type", "nil")
 	}
 
-	// Get the type ID for caching
-	typeID := t.StructID()
-
 	// Check if we already have this schema cached
-	if c, found := tb.findSchema(typeID); found {
+	if c, found := tb.findSchema(t); found {
 		return c, nil
 	}
 
@@ -150,7 +154,7 @@ func (tb *TinyBin) scanToCache(t *tinyreflect.Type) (Codec, error) {
 	}
 
 	// Cache the schema
-	tb.addSchema(typeID, c)
+	tb.addSchema(t, c)
 
 	return c, nil
 }

@@ -1,9 +1,8 @@
 package tinybin
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
 )
 
 func TestExactUnmarshalFlow(t *testing.T) {
@@ -27,8 +26,8 @@ func TestExactUnmarshalFlow(t *testing.T) {
 	dest := &simpleStruct{}
 
 	// Step 1: Get the reflect value (decoder.go line 46)
-	rv := tinyreflect.Indirect(tinyreflect.ValueOf(dest))
-	t.Logf("rv.Type(): %p", rv.Type())
+	rv := reflect.Indirect(reflect.ValueOf(dest))
+	t.Logf("rv.Type(): %v", rv.Type())
 
 	// Step 2: Check if Type is nil
 	if rv.Type() == nil {
@@ -36,7 +35,7 @@ func TestExactUnmarshalFlow(t *testing.T) {
 	}
 
 	// Step 3: Call scanToCache directly (decoder.go line 52)
-	cache := make(map[*tinyreflect.Type]Codec)
+	cache := make(map[reflect.Type]Codec)
 	codec, err := scanToCache(rv.Type(), cache)
 	if err != nil {
 		t.Fatalf("scanToCache failed: %v", err)

@@ -22,23 +22,24 @@ func TestReader_Slice(t *testing.T) {
 	}
 }
 
-// TestReaderEOF commented out since it uses bigStruct which contains maps and time.Time
+// TestReaderEOF commented out since it uses bigStruct which contains maps.
 // func TestReaderEOF(t *testing.T) {
-// 	b, _ := Encode(newBigStruct())
+// 	tb := New()
+// 	b, _ := tb.Encode(newBigStruct())
 //
 // 	for size := 0; size < len(b)-1; size++ {
 // 		var output bigStruct
-// 		if err := Decode(b[0:size], &output); err == nil {
+// 		if err := tb.Decode(b[0:size], &output); err == nil {
 // 			t.Error("Expected error, got nil")
 // 		}
 // 	}
 // }
 
-// TestStreamReader and bigStruct commented out since it uses maps and time.Time
-// which are not supported in tinyreflect
+// TestStreamReader and bigStruct commented out since it uses maps, which are not supported in TinyBin.
 // func TestStreamReader(t *testing.T) {
 // 	input := newBigStruct()
-// 	b, _ := Encode(input)
+// 	tb := New()
+// 	b, _ := tb.Encode(input)
 //
 // 	dec := NewDecoder(newNetworkSource(b))
 // 	out := new(bigStruct)
@@ -49,7 +50,7 @@ func TestReader_Slice(t *testing.T) {
 
 // --------------------------------------- Big Structure (Every Field Type) ---------------------------------------
 
-// structure with every possible codec type - commented out since it uses maps and time.Time
+// structure with every possible codec type - commented out since it uses maps.
 // type bigStruct struct {
 // 	String    string
 // 	Uint8     uint8

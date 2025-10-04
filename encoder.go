@@ -3,8 +3,8 @@ package tinybin
 import (
 	"io"
 	"math"
+	"reflect"
 
-	"github.com/cdvelop/tinyreflect"
 	. "github.com/cdvelop/tinystring"
 )
 
@@ -41,7 +41,7 @@ func (e *encoder) Buffer() io.Writer {
 func (e *encoder) Encode(v any) (err error) {
 
 	// Scan the type (this will load from cache)
-	rv := tinyreflect.Indirect(tinyreflect.ValueOf(v))
+	rv := reflect.Indirect(reflect.ValueOf(v))
 	typ := rv.Type()
 	if typ == nil {
 		return Errf("cannot encode nil value")
@@ -150,7 +150,7 @@ func (e *encoder) WriteString(v string) {
 }
 
 // scanToCache scans the type and caches it in the TinyBin instance
-func (e *encoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
+func (e *encoder) scanToCache(t reflect.Type) (Codec, error) {
 	if e.tb == nil {
 		return nil, Err("encoder", "scanToCache", "TinyBin", "nil")
 	}

@@ -1,14 +1,12 @@
 package tinybin
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
-	. "github.com/cdvelop/tinystring"
 )
 
 // TestStructPointerFieldAccess verifies that struct fields containing pointers
-// can be properly accessed and marshaled/unmarshaled through tinyreflect
+// can be properly accessed and marshaled/unmarshaled through reflect
 func TestStructPointerFieldAccess(t *testing.T) {
 	type InnerStruct struct {
 		V int
@@ -22,23 +20,17 @@ func TestStructPointerFieldAccess(t *testing.T) {
 		original := &OuterStruct{Ptr: &InnerStruct{V: 42}}
 
 		// Verify basic field access works correctly
-		rv := tinyreflect.ValueOf(original)
-		elem, err := rv.Elem()
-		if err != nil {
-			t.Fatalf("rv.Elem() failed: %v", err)
-		}
+		rv := reflect.ValueOf(original)
+		elem := rv.Elem()
 
 		// Verify we can access the pointer field
-		ptrField, err := elem.Field(0)
-		if err != nil {
-			t.Fatalf("elem.Field(0) failed: %v", err)
-		}
+		ptrField := elem.Field(0)
 
 		// Verify the field has correct type and kind
 		if ptrField.Type() == nil {
 			t.Fatal("ptrField.Type() returned nil")
 		}
-		if ptrField.Kind() != K.Pointer {
+		if ptrField.Kind() != reflect.Ptr {
 			t.Errorf("Expected pointer kind, got %v", ptrField.Kind())
 		}
 

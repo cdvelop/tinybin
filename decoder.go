@@ -3,8 +3,8 @@ package tinybin
 import (
 	"io"
 	"math"
+	"reflect"
 
-	"github.com/cdvelop/tinyreflect"
 	. "github.com/cdvelop/tinystring"
 )
 
@@ -25,7 +25,7 @@ func NewDecoder(r io.Reader) *decoder {
 
 // Decode decodes a value by reading from the underlying io.Reader.
 func (d *decoder) Decode(v any) (err error) {
-	rv := tinyreflect.Indirect(tinyreflect.ValueOf(v))
+	rv := reflect.Indirect(reflect.ValueOf(v))
 	canAddr := rv.CanAddr()
 	if !canAddr {
 		return Err(D.Binary, "decoder", D.Required, D.Type, D.Pointer)
@@ -148,7 +148,7 @@ func (d *decoder) Reset(data []byte, tb *TinyBin) {
 }
 
 // scanToCache scans the type and caches it in the TinyBin instance
-func (d *decoder) scanToCache(t *tinyreflect.Type) (Codec, error) {
+func (d *decoder) scanToCache(t reflect.Type) (Codec, error) {
 	if d.tb == nil {
 		return nil, Err("decoder", "scanToCache", "TinyBin", "nil")
 	}
