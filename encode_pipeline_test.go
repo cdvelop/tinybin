@@ -1,9 +1,8 @@
 package tinybin
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
 )
 
 // TestEncodePipelineSteps tests the complete encoding pipeline step by step
@@ -23,8 +22,8 @@ func TestEncodePipelineSteps(t *testing.T) {
 	}}
 
 	// Step 1: ValueOf and Indirect (like in Encode)
-	rv := tinyreflect.Indirect(tinyreflect.ValueOf(&input))
-	t.Logf("Step 1 - rv type: %p, kind: %s", rv.Type(), rv.Type().Kind().String())
+	rv := reflect.Indirect(reflect.ValueOf(&input))
+	t.Logf("Step 1 - rv type: %v, kind: %s", rv.Type(), rv.Type().Kind().String())
 
 	typ := rv.Type()
 	if typ == nil {
@@ -32,7 +31,7 @@ func TestEncodePipelineSteps(t *testing.T) {
 	}
 
 	// Step 2: scanToCache (like in Encode)
-	schemas := make(map[*tinyreflect.Type]Codec)
+	schemas := make(map[reflect.Type]Codec)
 	c, err := scanToCache(typ, schemas)
 	if err != nil {
 		t.Fatalf("scanToCache failed: %v", err)
@@ -40,22 +39,16 @@ func TestEncodePipelineSteps(t *testing.T) {
 	t.Logf("Step 2 - codec type: %T", c)
 
 	// Step 3: Test a simple property of the value to see if it's valid
-	length, err := rv.Len()
-	if err != nil {
-		t.Fatalf("rv.Len() failed: %v", err)
-	}
+	length := rv.Len()
 	t.Logf("Step 3 - slice length: %d", length)
 
 	// Step 4: Try to index the first element
 	if length > 0 {
-		elem, err := rv.Index(0)
-		if err != nil {
-			t.Fatalf("rv.Index(0) failed: %v", err)
-		}
-		t.Logf("Step 4 - first element type: %p, kind: %s", elem.Type(), elem.Type().Kind().String())
+		elem := rv.Index(0)
+		t.Logf("Step 4 - first element type: %v, kind: %s", elem.Type(), elem.Type().Kind().String())
 
 		// Check if the element is a struct
-		if elem.Type().Kind().String() != "struct" {
+		if elem.Type().Kind() != reflect.Struct {
 			t.Fatalf("Expected first element to be struct, got: %s", elem.Type().Kind().String())
 		}
 	}

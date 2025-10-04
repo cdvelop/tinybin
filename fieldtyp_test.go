@@ -1,9 +1,8 @@
 package tinybin
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
 )
 
 func TestFieldTypNil(t *testing.T) {
@@ -16,7 +15,7 @@ func TestFieldTypNil(t *testing.T) {
 	}
 
 	s := &simpleStruct{}
-	rv := tinyreflect.Indirect(tinyreflect.ValueOf(s))
+	rv := reflect.Indirect(reflect.ValueOf(s))
 	typ := rv.Type()
 
 	if typ == nil {
@@ -24,28 +23,22 @@ func TestFieldTypNil(t *testing.T) {
 	}
 
 	// Check each field individually
-	numFields, err := typ.NumField()
-	if err != nil {
-		t.Fatalf("NumField() failed: %v", err)
-	}
+	numFields := typ.NumField()
 
 	t.Logf("Struct has %d fields", numFields)
 
 	for i := 0; i < numFields; i++ {
-		field, err := typ.Field(i)
-		if err != nil {
-			t.Fatalf("Field(%d) failed: %v", i, err)
-		}
+		field := typ.Field(i)
 
-		t.Logf("Field %d: Name=%s, Typ=%p", i, field.Name, field.Typ)
+		t.Logf("Field %d: Name=%s, Typ=%v", i, field.Name, field.Type)
 
-		if field.Typ == nil {
+		if field.Type == nil {
 			t.Errorf("❌ Field %d (%s) has nil Typ!", i, field.Name)
 		} else {
-			t.Logf("✅ Field %d (%s) has Typ: %p, Kind: %v", i, field.Name, field.Typ, field.Typ.Kind())
+			t.Logf("✅ Field %d (%s) has Typ: %v, Kind: %v", i, field.Name, field.Type, field.Type.Kind())
 
 			// Test scanType on this field
-			codec, err := scanType(field.Typ)
+			codec, err := scanType(field.Type)
 			if err != nil {
 				t.Errorf("❌ scanType failed for field %d (%s): %v", i, field.Name, err)
 			} else {

@@ -2,10 +2,8 @@ package tinybin
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
-	. "github.com/cdvelop/tinystring"
 )
 
 // TestUnmarshalPipeline verifies the complete unmarshal pipeline for struct pointers
@@ -42,19 +40,19 @@ func TestUnmarshalPipeline(t *testing.T) {
 		decoder := NewDecoder(bytes.NewReader(payload))
 
 		// Step 3: Test ValueOf and Indirect operations (core of unmarshal)
-		rv := tinyreflect.ValueOf(decoded)
+		rv := reflect.ValueOf(decoded)
 		if rv.Type() == nil {
 			t.Fatal("ValueOf returned value with nil type")
 		}
-		if rv.Kind() != K.Pointer {
+		if rv.Kind() != reflect.Ptr {
 			t.Errorf("Expected pointer to struct, got kind %v", rv.Kind())
 		}
 
-		indirect := tinyreflect.Indirect(rv)
+		indirect := reflect.Indirect(rv)
 		if indirect.Type() == nil {
 			t.Fatal("Indirect returned value with nil type")
 		}
-		if indirect.Kind() != K.Struct {
+		if indirect.Kind() != reflect.Struct {
 			t.Errorf("Expected struct after Indirect, got kind %v", indirect.Kind())
 		}
 

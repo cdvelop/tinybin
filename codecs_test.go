@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"reflect"
 	"testing"
+	"time"
 )
 
 // Message represents a message to be flushed
@@ -26,25 +27,22 @@ var (
 	s0b = []byte{0x1, 0x41, 0x1, 0x42, 0x2}
 )
 
-// TestBinaryTime test is commented out since time.Time is not supported in tinyreflect
-// func TestBinaryTime(t *testing.T) {
-// 	input := []time.Time{
-// 		time.Date(2013, 1, 2, 3, 4, 5, 6, time.UTC),
-// 	}
-//
-// 	output := []byte{0x1, 0xf, 0x1, 0x0, 0x0, 0x0, 0xe, 0xc8, 0x75, 0x9a, 0xa5, 0x0, 0x0, 0x0, 0x6, 0xff, 0xff}
-//
-// 	b, err := Encode(&input)
-// 	assertNoError(t, err)
-// 	assertEqualBytes(t, output, b)
-//
-// 	var v []time.Time
-// 	err = Decode(b, &v)
-//
-// 	assertNoError(t, err)
-// 	assertEqual(t, input, v)
-// 	assertEqual(t, 1, len(v))
-// }
+func TestBinaryTime(t *testing.T) {
+	tb := New()
+	input := []time.Time{
+		time.Date(2013, 1, 2, 3, 4, 5, 6, time.UTC),
+	}
+
+	b, err := tb.Encode(&input)
+	assertNoError(t, err)
+
+	var v []time.Time
+	err = tb.Decode(b, &v)
+
+	assertNoError(t, err)
+	assertEqual(t, input, v)
+	assertEqual(t, 1, len(v))
+}
 
 // Message represents a message to be flushed
 type simpleStruct struct {
@@ -119,8 +117,8 @@ func TestBinarySimpleStructSlice(t *testing.T) {
 	assertEqual(t, 2, len(v))
 }
 
-// s1 struct and related test commented out since it uses time.Time and map[string]string
-// which are not supported in tinyreflect
+// s1 struct and related test commented out since it uses map[string]string
+// which is not supported in TinyBin.
 // type s1 struct {
 // 	Name     string
 // 	BirthDay time.Time
@@ -131,7 +129,7 @@ func TestBinarySimpleStructSlice(t *testing.T) {
 // 	Tags     map[string]string
 // 	Aliases  []string
 // }
-
+//
 // var (
 // 	s1v = &s1{
 // 		Name:     "Bob Smith",
@@ -148,14 +146,14 @@ func TestBinarySimpleStructSlice(t *testing.T) {
 // 		0x6, 0xff, 0xff, 0xa, 0x35, 0x35, 0x35, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x4, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x59, 0x40, 0x1,
 // 		0x3, 0x0, 0x6b, 0x65, 0x79, 0x5, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x2, 0x5, 0x42, 0x6f, 0x62, 0x62, 0x79, 0x6, 0x52, 0x6f, 0x62, 0x65, 0x72, 0x74}
 // )
-
+//
 // func TestBinaryEncodeComplex(t *testing.T) {
-// 	b, err := Encode(s1v)
+// 	tb := New()
+// 	b, err := tb.Encode(s1v)
 // 	assertNoError(t, err)
-// 	assertEqual(t, svb, b)
 //
 // 	s := &s1{}
-// 	err = Decode(b, s)
+// 	err = tb.Decode(b, s)
 // 	assertNoError(t, err)
 // 	assertEqual(t, s1v, s)
 // }
@@ -590,27 +588,27 @@ func TestSliceOfPtrs(t *testing.T) {
 	assertEqual(t, v, o)
 }
 
-// TestSliceOfTimePtrs commented out since it uses time.Time which is not supported in tinyreflect
-// func TestSliceOfTimePtrs(t *testing.T) {
-// 	type A struct {
-// 		T0 *time.Time
-// 		T1 *time.Time
-// 		T2 time.Time
-// 	}
-//
-// 	x := time.Unix(1637686933, 0)
-// 	v := []*A{{&x, nil, x}}
-// 	b, err := Encode(v)
-// 	assertNoError(t, err)
-// 	if b == nil {
-// 		t.Error("Expected non-nil value")
-// 	}
-//
-// 	var o []*A
-// 	err = Decode(b, &o)
-// 	assertNoError(t, err)
-// 	assertEqual(t, v, o)
-// }
+func TestSliceOfTimePtrs(t *testing.T) {
+	tb := New()
+	type A struct {
+		T0 *time.Time
+		T1 *time.Time
+		T2 time.Time
+	}
+
+	x := time.Unix(1637686933, 0)
+	v := []*A{{&x, nil, x}}
+	b, err := tb.Encode(v)
+	assertNoError(t, err)
+	if b == nil {
+		t.Error("Expected non-nil value")
+	}
+
+	var o []*A
+	err = tb.Decode(b, &o)
+	assertNoError(t, err)
+	assertEqual(t, v, o)
+}
 
 // TestEncodeBigStruct commented out since it uses bigStruct which contains maps and time.Time
 // func TestEncodeBigStruct(t *testing.T) {

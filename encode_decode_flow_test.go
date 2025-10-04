@@ -1,9 +1,8 @@
 package tinybin
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
 )
 
 func TestDecodeFlow(t *testing.T) {
@@ -26,7 +25,7 @@ func TestDecodeFlow(t *testing.T) {
 	decoded := &simpleStruct{}
 
 	// Test the decode prerequisites
-	rv := tinyreflect.Indirect(tinyreflect.ValueOf(decoded))
+	rv := reflect.Indirect(reflect.ValueOf(decoded))
 	canAddr := rv.CanAddr()
 	if !canAddr {
 		t.Fatal("Cannot address - this indicates a fundamental issue with ValueOf/Indirect")
@@ -36,7 +35,7 @@ func TestDecodeFlow(t *testing.T) {
 	if typ == nil {
 		t.Fatal("Type is nil - this indicates a Value creation issue")
 	}
-	t.Logf("Type: %p, Kind: %v", typ, typ.Kind())
+	t.Logf("Type: %v, Kind: %v", typ, typ.Kind())
 
 	// Test scanType directly to ensure codec creation works
 	codec, err := scanType(typ)

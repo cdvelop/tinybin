@@ -2,9 +2,8 @@ package tinybin
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
 )
 
 type testCustom string
@@ -15,7 +14,7 @@ func (s *testCustom) GetBinaryCodec() Codec {
 }
 
 func TestScanner(t *testing.T) {
-	rt := tinyreflect.Indirect(tinyreflect.ValueOf(s0v)).Type()
+	rt := reflect.Indirect(reflect.ValueOf(s0v)).Type()
 	codec, err := scanType(rt)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -26,7 +25,7 @@ func TestScanner(t *testing.T) {
 
 	var b bytes.Buffer
 	e := NewEncoder(&b)
-	err = codec.EncodeTo(e, tinyreflect.Indirect(tinyreflect.ValueOf(s0v)))
+	err = codec.EncodeTo(e, reflect.Indirect(reflect.ValueOf(s0v)))
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -37,7 +36,7 @@ func TestScanner(t *testing.T) {
 
 func TestScanner_Custom(t *testing.T) {
 	v := testCustom("test")
-	rt := tinyreflect.Indirect(tinyreflect.ValueOf(v)).Type()
+	rt := reflect.Indirect(reflect.ValueOf(v)).Type()
 	codec, err := scanType(rt)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -51,7 +50,7 @@ func TestScanner_Custom(t *testing.T) {
 // Maps are intentionally not supported in TinyBin for WebAssembly optimization
 /*
 func TestScannerComposed(t *testing.T) {
-	codec, err := scanType(tinyreflect.TypeOf(Partition{}))
+	codec, err := scanType(reflect.TypeOf(Partition{}))
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

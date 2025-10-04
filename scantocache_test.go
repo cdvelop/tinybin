@@ -1,14 +1,13 @@
 package tinybin
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
 )
 
 func TestScanToCacheWithNilType(t *testing.T) {
 	// Test what happens when we pass nil to scanToCache
-	cache := make(map[*tinyreflect.Type]Codec)
+	cache := make(map[reflect.Type]Codec)
 
 	// This should fail
 	_, err := scanToCache(nil, cache)
@@ -27,14 +26,14 @@ func TestScanToCacheWithNilType(t *testing.T) {
 	}
 
 	s := &simpleStruct{}
-	rv := tinyreflect.Indirect(tinyreflect.ValueOf(s))
+	rv := reflect.Indirect(reflect.ValueOf(s))
 	typ := rv.Type()
 
 	if typ == nil {
 		t.Fatal("rv.Type() returned nil")
 	}
 
-	t.Logf("Testing scanToCache with valid type: %p", typ)
+	t.Logf("Testing scanToCache with valid type: %v", typ)
 
 	codec, err := scanToCache(typ, cache)
 	if err != nil {

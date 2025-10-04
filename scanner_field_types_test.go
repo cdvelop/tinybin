@@ -1,9 +1,8 @@
 package tinybin
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/cdvelop/tinyreflect"
 )
 
 func TestScanTypeStructFields(t *testing.T) {
@@ -15,7 +14,7 @@ func TestScanTypeStructFields(t *testing.T) {
 	}
 
 	s := &testStruct{}
-	rv := tinyreflect.Indirect(tinyreflect.ValueOf(s))
+	rv := reflect.Indirect(reflect.ValueOf(s))
 	typ := rv.Type()
 
 	if typ == nil {
@@ -37,19 +36,13 @@ func TestScanTypeStructFields(t *testing.T) {
 	}
 
 	// Test each field type individually to ensure all field types are supported
-	numFields, err := typ.NumField()
-	if err != nil {
-		t.Fatalf("NumField failed: %v", err)
-	}
+	numFields := typ.NumField()
 
 	for i := 0; i < numFields; i++ {
-		field, err := typ.Field(i)
-		if err != nil {
-			t.Fatalf("Field(%d) failed: %v", i, err)
-		}
+		field := typ.Field(i)
 
-		fieldName := field.Name.String()
-		fieldTyp := field.Typ
+		fieldName := field.Name
+		fieldTyp := field.Type
 
 		t.Logf("Testing Field %d: %s (Type: %v)", i, fieldName, fieldTyp.Kind())
 
