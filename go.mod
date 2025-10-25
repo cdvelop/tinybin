@@ -1,5 +1,5 @@
 module github.com/cdvelop/tinybin
 
-go 1.24.4
+go 1.25.2
 
-require github.com/cdvelop/tinystring v0.8.1
+require github.com/cdvelop/tinystring v0.10.0
