@@ -1,10 +1,10 @@
 # TinyBin Test Coverage Plan
 
 ## Objective
-Maximize test coverage for TinyBin serialization using minimal, reusable data structures that represent real-world complexity (Medical Platform requirements), eliminating redundant code.
+Increase test coverage for TinyBin serialization by adding missing scenarios and edge cases. Use shared fixtures for **new tests** to avoid code duplication. Existing tests should be preserved and only updated if they are broken or redundant.
 
 ## Core Structures (Fixtures)
-Consolidate all test data into two shared structures in `shared_test.go`. Do not create ad-hoc structs for individual tests.
+Use these structures for **new test cases** in `shared_test.go`.
 
 ### 1. `FixtureBasic`
 Covers all primitive types, standard slices, and basic logic.
@@ -104,6 +104,6 @@ type FixtureComplex struct {
 
 ## Implementation Tasks
 1. Create `shared_test.go` with `FixtureBasic` and `FixtureComplex`.
-2. Refactor existing tests (`codecs_test.go`, `decoder_*.go`, etc.) to use these fixtures.
-3. Delete redundant structs (`simpleStruct`, `msg`, `s0`, `T1`, `Struct`, etc.).
-4. Verify all tests pass with the new unified structures.
+2. Implement **new test cases** (TC-001 to TC-012) using these fixtures.
+3. **Optional**: Update existing tests to use shared fixtures ONLY if it simplifies maintenance or fixes bugs. Do not blindly refactor working tests.
+4. Verify all tests (new and existing) pass.
